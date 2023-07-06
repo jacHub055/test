@@ -1,0 +1,1747 @@
+ BS30010 : PROC OPTIONS(MAIN);
+
+   DCL  UKTOKRD   FILE RECORD INPUT ;
+
+   DCL  OKRJYAD   FILE RECORD OUTPUT ;
+
+   DCL  OKRJYUP   FILE RECORD OUTPUT ;
+
+   DCL  OTKAMOT   FILE RECORD OUTPUT ;
+
+   DCL  VKKARIO   FILE RECORD KEYED SEQUENTIAL INPUT BUFFERED
+                  ENV(VSAM SKIP) ;
+
+   DCL  LB62000A  ENTRY OPTIONS (ASM INTER) ;
+
+   DCL  VKCHINM   FILE RECORD KEYED DIRECT INPUT BUFFERED
+                  ENV(VSAM) ;
+
+   DCL  LSB0000   ENTRY ;
+
+   DCL  LSB0120   ENTRY ;
+   DCL  LSB0130   ENTRY ;
+   DCL  LSB0140   ENTRY ;
+   DCL  LSB0150   ENTRY ;
+   DCL  LSB0160   ENTRY ;
+   DCL  LSB0180   ENTRY ;
+   DCL  LSB0190   ENTRY ;
+   DCL  LSW0130   ENTRY ;
+   DCL  LSP0010   ENTRY    RETURNS(CHAR(6)) ;
+   DCL  LSS0110   ENTRY ;
+   DCL  LIEA000   ENTRY ;
+   DCL  LIE0010   ENTRY ;
+   DCL  LBOND10   ENTRY ;
+
+   DCL    IN_DATA              CHAR (0384) ;
+   DCL 01 IN_UKE_DATA          DEF   IN_DATA ,
+        02 IN_UKE_DDPTC        CHAR (0004) ,
+        02 IN_UKE_DDPKB        CHAR (0001) ,
+        02 IN_UKE_RECID        CHAR (0003) ,
+        02 IN_UKE_LENG         DEC FIXED (0005) ,
+        02 IN_UKE_NDATE        CHAR (0006) ,
+        02 IN_UKE_NTIME        CHAR (0006) ,
+        02 IN_UKE_OKRNO        CHAR (0011) ,
+        02 IN_UKE_NAIAR        CHAR (0350) ;
+   DCL 01 IN_OKR_DATA          DEF   IN_DATA ,
+          %INCLUDE   SSS17 ;
+   DCL 01 IN_KRI_DATA          DEF   IN_DATA ,
+          %INCLUDE   SSS18 ;
+
+   DCL    OKR_MSAR             CHAR (0540) ;
+   DCL    OKR_KEY              CHAR (0011) ;
+   DCL    OKR_LENG             FIXED BIN (0031) ;
+   DCL    OKR_TYPE             CHAR (0001) ;
+   DCL    OKR_KEKKA            CHAR (0001) ;
+
+   DCL 01 KRI_MSAR ,
+          %INCLUDE KARIOKRI ;
+
+   DCL 01 CHI_MST ,
+          %INCLUDE CHIMEIET ;
+   DCL  CHI_KEY                CHAR (0005) ;
+   DCL  CHI_MST_SW             BIT  (1)     INIT('1'B) ;
+   DCL  CHI_FND_SW             CHAR (0001)  INIT('0') ;
+   DCL  WK_CHAR28              CHAR (0028) ;
+   DCL  1 DEF_WK_CHAR28        DEF   WK_CHAR28 ,
+          2 WK_CHAR28_1_16     CHAR (16) ,
+          2 WK_CHAR28_17_1     CHAR (1) ,
+          2 WK_CHAR28_18_11    PIC  '(11)9' ;
+
+   DCL    OUT_VAR_DATA         VAR  CHAR (0552) ;
+   DCL 01 OUT_ISRT_DATA ,
+        02 OUT_ISRT_OKRNO      CHAR (0011) ,
+        02 OUT_ISRT_KUBUN      CHAR (0001) ,
+        02 OUT_ISRT_OKRAR      CHAR (0540) ;
+   DCL 01 DEF_ISRT_OKRMS       DEF   OUT_ISRT_OKRAR ,
+          %INCLUDE   OKRJYON1 ;
+   DCL 01 DEF_ISRT_KRIMS       DEF   OUT_ISRT_OKRAR ,
+          %INCLUDE   KARIOKRI ;
+   DCL    OUT_ISRT_DEF         CHAR (0552)   DEF   OUT_ISRT_DATA ;
+
+   DCL 01 OUT_KAMOTSU ,
+          %INCLUDE  KMTTSNOM ;
+
+   DCL 01 LSB0120_AREA         CHAR (0400) ;
+   DCL 01 LSB0120_DEFA         DEF   LSB0120_AREA ,
+          %INCLUDE BCHBW12A ;
+
+   DCL 01 LSB0130_AREA         CHAR (0600) ;
+   DCL 01 LSB0130_DEFA         DEF   LSB0130_AREA ,
+          %INCLUDE BCHBW13A ;
+   DCL 01 LSB0130_DEFB         DEF   LSB0130_AREA ,
+        02 LSB0130_AR400       CHAR (0400) ,
+        02 LSB0130_AR200       CHAR (0200) ;
+
+   DCL 01 LSB0140_AREA         CHAR (0400) ;
+   DCL 01 LSB0140_DEFB         DEF   LSB0140_AREA ,
+          %INCLUDE BCHBW14B ;
+
+   DCL 01 LSB0150_AREA         CHAR (0400) ;
+   DCL 01 LSB0150_DEFC         DEF   LSB0150_AREA ,
+          %INCLUDE BCHBW15C ;
+
+   DCL    LSB0160_AREA         CHAR (0400) ;
+   DCL 01 LSB0160_DEFA         DEF   LSB0160_AREA ,
+          %INCLUDE BCHBW16A ;
+   DCL 01 LSB0160_DEFF         DEF   LSB0160_AREA ,
+          %INCLUDE BCHBW16F ;
+
+   DCL 01 LSB0180_AREA         CHAR (0300) ;
+   DCL 01 LSB0180_DEFA         DEF   LSB0180_AREA ,
+          %INCLUDE BCHDXDLA ;
+   DCL 01 LSB0180_DEFB         DEF   LSB0180_AREA ,
+          %INCLUDE BCHDXDLB ;
+
+   DCL    DXDEXCIW       FIXED DEC(0007) DEF LSB0180_AREA POS(192);
+   DCL    DXDEXWNW       FIXED DEC(0007) DEF LSB0180_AREA POS(196);
+
+   DCL 01 LSB0190_AREA ,
+          %INCLUDE BCHERLGA ;
+
+   DCL 01 LSW0130_AREA         CHAR (0256) ;
+   DCL 01 LSW0130_DEFC         DEF   LSW0130_AREA ,
+          %INCLUDE BCHBW1DA;
+
+   DCL  RR_TYPE            CHAR (0001) ;
+   DCL  RR_LENG            FIXED BIN (0031) ;
+   DCL  RR_RTNCD           CHAR (0001) ;
+   DCL  RR_PTR12           POINTER ;
+   DCL  RR_PTR13           POINTER ;
+   DCL  RR_PTR14           POINTER ;
+   DCL  RR_PTR15           POINTER ;
+   DCL  RR_PTR16           POINTER ;
+   DCL  RR_PTR18           POINTER ;
+   DCL  RR_PTR19           POINTER ;
+   DCL  RR_PTR1D           POINTER ;
+
+   DCL  LSS0110_IN              CHAR (6) ;
+   DCL  LSS0110_ANS             CHAR (3) ;
+   DCL  DEF_LSS0110_ANS         PIC  '(3)9'   DEF  LSS0110_ANS ;
+
+   DCL  LIEA00_MODIN            CHAR (5) ;
+   DCL  1 LIEA00_MODANS ,
+          %INCLUDE  DXCHUKEI ;
+
+   DCL  MOD_DXHCG               CHAR (40) ;
+   DCL  1 DXHCG_MST             DEF   MOD_DXHCG ,
+          2 DXHCG_NIKEY         CHAR (7) ,
+          2 DXHCG_MSTKB         CHAR (1) ,
+          2 DXHCG_UKTEN         CHAR (4) ,
+          2 DXHCG_HIDAI         CHAR (5) ,
+          2 DXHCG_HININ         CHAR (7) ,
+          2 DXHCG_HIYOB         CHAR (1) ,
+          2 DXHCG_HIKBN (13)    CHAR (1) ,
+          2 DXHCG_SPACE         CHAR (2) ;
+   DCL  DXHCG_MODIN             CHAR (8) ;
+   DCL  1 DEF_DXHCG_MODIN       DEF   DXHCG_MODIN ,
+          2 DXHCG_MODIN1        CHAR (7) ,
+          2 DXHCG_MODIN2        CHAR (1) ;
+   DCL  DXHCG_PIC7              PIC  '(7)9' ;
+
+   DCL  LBOND_IN                CHAR (7) ;
+   DCL  LBOND_ANS               CHAR (40) ;
+   DCL  1 DEF_LBOND_ANS         DEF   LBOND_ANS ,
+          %INCLUDE BOUNDTBL ;
+
+   DCL  P_DATE                  CHAR (6) ;
+   DCL  PIC_P_DATE DEF P_DATE   PIC  '(6)9' ;
+   DCL  1 YMD_P_DATE DEF P_DATE ,
+          2 WK_YY               PIC  '(2)9' ,
+          2 WK_MM               PIC  '(2)9' ,
+          2 WK_DD               PIC  '(2)9' ;
+   DCL  EOF_SW                  BIT  (1)   INIT('1'B) ;
+   DCL  OPEN_FLG                BIT  (1)   INIT('0'B) ;
+   DCL  RETC_FLG                CHAR (1)   INIT('0') ;
+   DCL  KRI_MST_SW              BIT  (1)   INIT('0'B) ;
+   DCL  BCH12_SW                CHAR (1) ;
+   DCL  ERR_LOG_SW              CHAR (2) ;
+   DCL  LENG                    FIXED BIN  (31) ;
+   DCL  DXUK_KBN                PIC  '(3)9' ,
+        1 DEF_DXUK_KBN          DEF   DXUK_KBN ,
+          2 DXUK_KBN1           PIC  '(1)9' ,
+          2 DXUK_KBN2           PIC  '(1)9' ,
+          2 DXUK_KBN3           PIC  '(1)9' ;
+
+   DCL  DEF_OKR_CHK    CHAR (11) ;
+   DCL  OKR_CHK_ID     CHAR(3)  DEF  DEF_OKR_CHK POS(1) ;
+   DCL  OKR_CHK_ID2    CHAR(4)  DEF  DEF_OKR_CHK POS(1) ;
+
+   DCL  WK_PIC4                 PIC  '(4)9' ;
+   DCL  PIC11                   PIC  '(11)9' ;
+   DCL  1 DEF_PIC11_DTTM        DEF   PIC11 ,
+          2 PIC11_DTTM_ZERO     PIC  '(1)9' ,
+          2 PIC11_DTTM_DATE     PIC  '(6)9' ,
+          2 PIC11_DTTM_TIME     PIC  '(4)9' ;
+   DCL  PIC13                   PIC  '(13)9' ;
+   DCL  1 DEF_PIC13             DEF   PIC13 ,
+          2 PIC13_AR1           PIC  '(1)9' ,
+          2 PIC13_AR2           PIC  '(7)9' ,
+          2 PIC13_AR3           PIC  '(5)9' ;
+   DCL  KOKR_WKRYO              DEC FIXED (9) ;
+   DCL  UN_RYO_KEI              DEC FIXED (9) ;
+   DCL  WK_FUKKA_SQNO           PIC  '(13)9' ;
+   DCL  1 DEF_FUKKA_SQNO        DEF   WK_FUKKA_SQNO ,
+          2 WK_FUKKA_SQ1        PIC  '(1)9' ,
+          2 WK_FUKKA_SQ2        PIC  '(12)9' ;
+   DCL  WK_UKE_ATSUKA           PIC  '(2)9' ;
+   DCL  1 DEF_UKE_ATSUKA        DEF   WK_UKE_ATSUKA ,
+          2 DEF_UKE_ATSU1       PIC  '(1)9' ,
+          2 DEF_UKE_ATSU2       PIC  '(1)9' ;
+   DCL  KIRO_IF                 DEC FIXED (9)  INIT(0) ;
+   DCL  WK_OKR_ERRCNT           DEC FIXED (7)  INIT(0) ;
+   DCL  WK_OKR_ERRCNT_T         DEC FIXED (7)  INIT(0) ;
+   DCL  WK_OKR_OUTCNT           DEC FIXED (7)  INIT(0) ;
+   DCL  WK_OKR_UPCNT            DEC FIXED (7)  INIT(0) ;
+   DCL  WK_KAR_ERRCNT           DEC FIXED (7)  INIT(0) ;
+   DCL   (ADDR,SUBSTR,HIGH,LOW,LENGTH,STRING,VERIFY,UNSPEC) BUILTIN ;
+   DCL  WK_KAS_CNT           DEC FIXED (7)  INIT(0) ;
+   DCL  WK_KOK_6CNT          BIN FIXED (15)  INIT(0) ;
+   DCL  WK_KOK_6MEI          BIN FIXED (15)  INIT(0) ;
+
+   DCL  HNM_WK         CHAR(14) ;
+   DCL  HNM_14_1       CHAR(1)  DEF  HNM_WK  POS(14) ;
+   DCL  TNM_WK         CHAR(14) ;
+   DCL  TNM_14_1       CHAR(1)  DEF  TNM_WK  POS(14) ;
+
+   DCL B1DCNT                  FIXED DEC(0007) INIT(0);
+
+   DCL  ADDZ_WK         CHAR(28) ;
+   DCL  ADDZ_WK_22_1    CHAR(1)  DEF  ADDZ_WK  POS(22) ;
+   DCL  ADDZ_WK_23_6    CHAR(6)  DEF  ADDZ_WK  POS(23) ;
+   DCL  SYAK_CNT        FIXED DEC(0007) INIT(0);
+
+   DCL  YMDHM         PIC'(11)9' ;
+   DCL  YMDHM_10_2    PIC'(2)9'   DEF  YMDHM  POS(10) ;
+
+   DCL  TNCDAREA                  PIC'(0007)9'         ,
+        WK_TNCD1  DEF TNCDAREA    PIC'(0002)9'  POS(1) ,
+        WK_TNCD2  DEF TNCDAREA    PIC'(0005)9'  POS(3) ;
+   DCL  RYOKAREA                  PIC'(0009)9'         ,
+        WK_RYOK1  DEF RYOKAREA    PIC'(0002)9'  POS(1) ,
+        WK_RYOK2  DEF RYOKAREA    PIC'(0007)9'  POS(3) ;
+   DCL  KUBNAREA                  CHAR(0002)           ,
+        WK_KUBN1  DEF KUBNAREA    PIC'(0001)9'  POS(1) ,
+        WK_KUBN2  DEF KUBNAREA    PIC'(0001)9'  POS(2) ;
+
+   DCL  WK_CHR2                   CHAR(0002) ;
+   DCL  WK_PIC2   DEF  WK_CHR2    PIC'(0002)9' ;
+   DCL  WK_CHR6                   CHAR(0006) ;
+   DCL  WK_PIC6   DEF  WK_CHR6    PIC'(0006)9' ;
+   DCL  WK_CHR11                  CHAR(0011) ;
+   DCL  WK_PIC11  DEF  WK_CHR11   PIC'(0011)9' ;
+
+ %PAGE ;
+
+   ON ENDFILE(UKTOKRD)
+     BEGIN ;
+       EOF_SW = '0'B ;
+     END ;
+   ON KEY(VKKARIO)
+     BEGIN ;
+       KRI_MST_SW = '0'B ;
+     END ;
+   ON KEY(VKCHINM)
+     BEGIN ;
+       CHI_MST_SW = '0'B ;
+     END ;
+
+   CALL  PLIRETC (7) ;
+   OPEN FILE(UKTOKRD) ,
+        FILE(OKRJYAD) ,
+        FILE(OKRJYUP) ,
+        FILE(OTKAMOT) ;
+   READ  FILE(UKTOKRD) INTO(IN_DATA) ;
+   IF  EOF_SW
+   THEN
+     DO ;
+       RR_PTR12 = ADDR(LSB0120_AREA) ;
+       RR_PTR13 = ADDR(LSB0130_AREA) ;
+       RR_PTR14 = ADDR(LSB0140_AREA) ;
+       RR_PTR15 = ADDR(LSB0150_AREA) ;
+       RR_PTR16 = ADDR(LSB0160_AREA) ;
+       RR_PTR18 = ADDR(LSB0180_AREA) ;
+       RR_PTR19 = ADDR(LSB0190_AREA) ;
+       RR_PTR1D = ADDR(LSW0130_AREA) ;
+       RR_TYPE = 'O' ;
+       CALL  LSB0000  (RR_TYPE) ;
+       P_DATE = LSP0010 ;
+
+       CALL  LSB0120 (RR_PTR12,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0130 (RR_PTR13,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0140 (RR_PTR14,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0150 (RR_PTR15,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0160 (RR_PTR16,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0180 (RR_PTR18,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0190 (RR_PTR19,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSW0130 (RR_PTR1D,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       OKR_TYPE = 'O' ;
+       CALL  LB62000A
+               (OKR_MSAR,OKR_KEY,OKR_LENG,OKR_TYPE,OKR_KEKKA) ;
+       OPEN FILE(VKKARIO) ,
+            FILE(VKCHINM) ;
+       OPEN_FLG = '1'B ;
+     END ;
+   ELSE ;
+
+   DEF_OKR_CHK = LOW(11) ;
+   DO WHILE(EOF_SW) ;
+      CHI_FND_SW = '0' ;
+      IF  DEF_OKR_CHK = IN_UKE_OKRNO
+      THEN
+        DO ;
+          IF  IN_UKE_RECID = '180'
+          THEN
+            DO ;
+              ERR_LOG_SW = '10' ;
+              CALL  ERR_LOG_SUB_KARI ;
+            END ;
+          ELSE
+            DO ;
+              ERR_LOG_SW = '10' ;
+              CALL  ERR_LOG_SUB_OKR ;
+            END ;
+          GO TO  READSTP ;
+        END ;
+      ELSE
+        DEF_OKR_CHK = IN_UKE_OKRNO ;
+      IF  IN_UKE_RECID = '180'
+      THEN
+        DO ;
+          IF  OKR_CHK_ID  <  '980'  |
+              OKR_CHK_ID  >  '989'
+          THEN
+            DO ;
+              ERR_LOG_SW = '11' ;
+              CALL  ERR_LOG_SUB_KARI ;
+            END ;
+          ELSE  CALL  KARI_MS_SUB ;
+        END ;
+      ELSE
+        DO ;
+          IF  OKR_CHK_ID  >= '980'  &
+              OKR_CHK_ID  <= '989'
+          THEN
+            DO ;
+              ERR_LOG_SW = '11' ;
+              CALL  ERR_LOG_SUB_OKR ;
+            END ;
+          ELSE
+            DO ;
+
+              IF  SS17MCKB = 1
+              THEN
+                DO ;
+
+   IF (OKR_CHK_ID2 > '0000' & OKR_CHK_ID2 < '0080')
+                   | (OKR_CHK_ID >= '010' & OKR_CHK_ID <= '859')
+                  THEN
+                    CALL  OKRJ_MS_SUB ;
+                  ELSE
+                    DO ;
+                      ERR_LOG_SW = '11' ;
+                      CALL  ERR_LOG_SUB_OKR ;
+                      WK_OKR_ERRCNT_T = WK_OKR_ERRCNT_T + 1 ;
+                    END ;
+                END ;
+              ELSE
+                DO ;
+                  IF ( OKR_CHK_ID >= '008' & OKR_CHK_ID <= '009' )  |
+                     ( OKR_CHK_ID >= '860' & OKR_CHK_ID <= '979' )
+                  THEN
+                    CALL  OKRJ_MS_SUB ;
+                  ELSE
+                    DO ;
+                      ERR_LOG_SW = '11' ;
+                      CALL  ERR_LOG_SUB_OKR ;
+                      WK_OKR_ERRCNT_T = WK_OKR_ERRCNT_T + 1 ;
+                    END ;
+                END ;
+            END ;
+
+        END ;
+   READSTP :
+      READ  FILE(UKTOKRD) INTO(IN_DATA) ;
+   END ;
+
+   DISPLAY('*  BS30010P ==>  OKURIJYO NO ER  = '||WK_OKR_ERRCNT_T) ;
+   DISPLAY('*  BS30010P ==>  OKURIJYO ERROR  = '||WK_OKR_ERRCNT) ;
+   DISPLAY('*  BS30010P ==>  OKURIJYO OUT    = '||WK_OKR_OUTCNT) ;
+   DISPLAY('*  BS30010P ==>  OKURIJYO UPDATE = '||WK_OKR_UPCNT) ;
+   DISPLAY('*  BS30010P ==>  KARIDEN  ERROR  = '||WK_KAR_ERRCNT) ;
+   DISPLAY('*  BS30010P ==>  KASIKIRI OKRJYO = '||WK_KAS_CNT) ;
+
+   DISPLAY('*  BS30010P ==>  LSW0130 CNT       = '||B1DCNT) ;
+   DISPLAY('*  BS30010P ==>  UNTIN SYUYAKU BUN = '||SYAK_CNT) ;
+   IF  OPEN_FLG
+   THEN
+     DO ;
+       RR_TYPE = 'C' ;
+       CALL  LSB0120 (RR_PTR12,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0130 (RR_PTR13,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0140 (RR_PTR14,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0150 (RR_PTR15,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0160 (RR_PTR16,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0180 (RR_PTR18,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSB0190 (RR_PTR19,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       CALL  LSW0130 (RR_PTR1D,RR_LENG,RR_TYPE,RR_RTNCD) ;
+
+       OKR_TYPE = 'C' ;
+       CALL  LB62000A
+               (OKR_MSAR,OKR_KEY,OKR_LENG,OKR_TYPE,OKR_KEKKA) ;
+       CLOSE  FILE(VKKARIO) ,
+              FILE(VKCHINM) ;
+     END ;
+   ELSE ;
+   CLOSE  FILE(UKTOKRD) ,
+          FILE(OKRJYAD) ,
+          FILE(OKRJYUP) ,
+          FILE(OTKAMOT) ;
+
+   KARI_MS_SUB : PROC ;
+     KRI_MST_SW = '1'B ;
+     READ  FILE(VKKARIO) INTO(KRI_MSAR) KEY(SSYUKONO) ;
+     IF  KRI_MST_SW
+     THEN
+       DO ;
+         IF  KRI_MSAR.VJKHTYPE = '1'
+         THEN
+           DO ;
+             ERR_LOG_SW = '10' ;
+             CALL  ERR_LOG_SUB_KARI ;
+             GO TO  KARI_MS_END_STEP ;
+           END ;
+         ELSE ;
+       END ;
+     ELSE ;
+     IF  KRI_MST_SW
+     THEN
+       DO ;
+         DEF_ISRT_KRIMS = KRI_MSAR , BYNAME ;
+         OUT_ISRT_KUBUN = '2' ;
+       END ;
+     ELSE
+       DO ;
+         DEF_ISRT_KRIMS = '' ;
+         OUT_ISRT_KUBUN = '1' ;
+       END ;
+     OUT_ISRT_OKRNO = IN_UKE_OKRNO ;
+     WK_CHR11 = IN_UKE_OKRNO ;
+     DEF_ISRT_KRIMS.VJKHKONO = WK_PIC11 ;
+     DEF_ISRT_KRIMS.VJKHTYPE = 1 ;
+     DEF_ISRT_KRIMS.VJKHTNCD = IN_KRI_DATA.SSYUTNCD ;
+     DEF_ISRT_KRIMS.VJKHKYMD = IN_KRI_DATA.SSYUKYMD ;
+     DEF_ISRT_KRIMS.VJKHUKKB = IN_KRI_DATA.SSYUKAKB ;
+     DEF_ISRT_KRIMS.VJKHUNGM = IN_KRI_DATA.SSYUNYGM ;
+     DEF_ISRT_KRIMS.VJKHUSNO = IN_KRI_DATA.SSYUKSNO ;
+     DEF_ISRT_KRIMS.VJKHURNO = IN_KRI_DATA.SSYUKDNO ;
+     DEF_ISRT_KRIMS.VJKHHNNM = SUBSTR(IN_KRI_DATA.SSYUHNNM,1,14) ;
+     DEF_ISRT_KRIMS.VJKHCNNM = SUBSTR(IN_KRI_DATA.SSYUCNNM,1,14) ;
+     DEF_ISRT_KRIMS.VJKHCTEL = IN_KRI_DATA.SSYUCTEL ;
+     DEF_ISRT_KRIMS.VJKHKKOS = IN_KRI_DATA.SSYUKKOS ;
+     DEF_ISRT_KRIMS.VJKHSKOS = IN_KRI_DATA.SSYUSKOS ;
+     DEF_ISRT_KRIMS.VJKHJURY = IN_KRI_DATA.SSYUJURY ;
+     DEF_ISRT_KRIMS.VJKHRIYU = IN_KRI_DATA.SSYURIYU ;
+     DEF_ISRT_KRIMS.VJKHHOND = IN_KRI_DATA.SSYUHOND ;
+     DEF_ISRT_KRIMS.VJKHCCHI = IN_KRI_DATA.SSYUCCHI ;
+     LENG = 170 + 12 ;
+     OUT_VAR_DATA = SUBSTR(OUT_ISRT_DEF,1,LENG) ;
+     WRITE  FILE(OKRJYAD) FROM(OUT_VAR_DATA) ;
+     IF  RETC_FLG ý= '1'
+     THEN
+       DO ;
+         CALL  PLIRETC (0) ;
+         RETC_FLG = '1'B ;
+       END ;
+     ELSE ;
+     BCH12_SW = '2' ;
+     CALL  B12_LOG_SUB ;
+   KARI_MS_END_STEP :
+   END  KARI_MS_SUB ;
+
+   OKRJ_MS_SUB : PROC ;
+     OKR_KEY = SS17OKNO ;
+     OKR_TYPE = 'G' ;
+     CALL  LB62000A
+             (OKR_MSAR,OKR_KEY,OKR_LENG,OKR_TYPE,OKR_KEKKA) ;
+     IF  OKR_KEKKA ý= 'N'
+     THEN
+       DO ;
+         OUT_ISRT_OKRAR = OKR_MSAR ;
+
+         IF   KOKRCOCD = 376683 |
+              KOKRCOCD = 377029 |
+              KOKRCOCD = 377037 |
+              KOKRCOCD = 466567
+            | KOKRCOCD = 1415167
+            | KOKRCOCD = 1409954
+
+            | KOKRCOCD = 1405184
+         THEN
+           DO ;
+             IF  KOKRTYPE = '6'  &
+                 KOKRRECT = '4'
+             THEN
+               CALL  CORONA_UPDATA_SUB ;
+             ELSE
+               DO ;
+                 ERR_LOG_SW = '10' ;
+                 CALL  ERR_LOG_SUB_OKR ;
+               END ;
+           END ;
+         ELSE
+           DO ;
+             ERR_LOG_SW = '10' ;
+             OUT_ISRT_OKRAR = OKR_MSAR ;
+             CALL  ERR_LOG_SUB_OKR ;
+           END ;
+       END ;
+     ELSE
+       DO ;
+         DEF_ISRT_OKRMS = '' ;
+         OUT_ISRT_OKRNO    = IN_UKE_OKRNO ;
+         OUT_ISRT_KUBUN    = '1' ;
+
+        HNM_WK = SS17NNMZ ;
+        TNM_WK = SS17KNNM ;
+        IF SS17MCKB = 2 & SS17USSU = 0 & SS17UTKB = 51
+          & HNM_14_1 = '~' & TNM_14_1 = '~'
+        THEN ;
+        ELSE
+          DO ;
+            IF HNM_14_1 = '~'
+            THEN HNM_14_1 = ' ' ;
+            ELSE ;
+            IF TNM_14_1 = '~'
+            THEN TNM_14_1 = ' ' ;
+            ELSE ;
+            SS17NNMZ = HNM_WK ;
+            SS17KNNM = TNM_WK ;
+          END ;
+
+
+
+         ADDZ_WK = SS17HTNZ.SS17ADDZ ;
+         IF SS17SYAK = '1'
+         THEN
+           DO ;
+             ADDZ_WK_22_1 = '#' ;
+             SYAK_CNT = SYAK_CNT + 1 ;
+           END ;
+         ELSE
+           DO ;
+             IF ADDZ_WK_22_1 = '#'
+             THEN ADDZ_WK_22_1 = ' ' ;
+             ELSE ;
+           END ;
+         SS17HTNZ.SS17ADDZ = ADDZ_WK ;
+
+         KOKROKNO          = SS17OKNO ;
+         KOKRKUBN.KOKRTYPE = SS17OKKB ;
+         KOKRKUBN.KOKRRECT = 4 ;
+         KOKRKUBN.KOKRMTCK = SS17MCKB ;
+         KOKRKUBN.KOKRUNKI = SS17UKKB ;
+         KOKRKUBN.KOKRGAMN = SS17GMKB ;
+         KOKRNIOK.KOKRHCCD = SS17HTNI.SS17HCCD ;
+         KOKRNIOK.KOKRCOCD = SS17HTNI.SS17NNCD ;
+         KOKRNIUK.KOKRCKCD = SS17CKNN.SS17CKCD ;
+         KOKRNIUK.KOKRKNAM = SS17CKNN.SS17KNNM ;
+         KOKRNIUK.KOKRTELE = SS17CNTL ;
+         KOKRKOSU          = SS17KOSU ;
+         KOKRKIRO          = SS17KGRM ;
+         KOKRMISY.KOKRUNCI = SS17MSUN.SS17MUNC ;
+         KOKRMISY.KOKRKBUN = SS17MSUN.SS17WMKB ;
+         KOKRMISY.KOKRRITU = SS17MSUN.SS17WMRT ;
+         KOKRAZUK.KOKRATAT = SS17AZUK.SS17TATE ;
+         KOKRAZUK.KOKRASHU = SS17AZUK.SS17SHKB ;
+         KOKRAZUK.KOKRAKIN = SS17AZUK.SS17HOKN ;
+         KOKRAZUK.KOKRARYO = SS17AZUK.SS17HORY ;
+         KOKRBUGA          = SS17BUBI ;
+         KOKRDAIH.KOKRDKBN = SS17DIHZ.SS17KKBZ ;
+         KOKRDAIH.KOKRDAAT = SS17DIHZ.SS17DAKN ;
+         KOKRDAIH.KOKRRONE = SS17DIHZ.SS17RNKN ;
+         KOKRDAIH.KOKRSOKN = SS17DIHZ.SS17TESO ;
+         KOKRDAIH.KOKRKESH = SS17DIHZ.SS17TEKE ;
+         DXUK_KBN1 = SS17JURY ;
+         DXUK_KBN2 = SS17DXK3 ;
+         DXUK_KBN3 = SS17DXK2 ;
+
+
+
+
+
+
+
+
+
+
+
+         IF  SS17JURY >= 4
+         THEN
+           KOKRRIRE.KOKRJURY = SS17JURY ;
+         ELSE
+           DO ;
+             SELECT  ( DXUK_KBN ) ;
+               WHEN  ( 000 )   KOKRRIRE.KOKRJURY = 0 ;
+               WHEN  ( 001 )   KOKRRIRE.KOKRJURY = 0 ;
+               WHEN  ( 010 )   KOKRRIRE.KOKRJURY = 2 ;
+               WHEN  ( 011 )   KOKRRIRE.KOKRJURY = 2 ;
+               WHEN  ( 100 )   KOKRRIRE.KOKRJURY = 1 ;
+               WHEN  ( 101 )   KOKRRIRE.KOKRJURY = 1 ;
+               WHEN  ( 110 )   KOKRRIRE.KOKRJURY = 3 ;
+               WHEN  ( 111 )   KOKRRIRE.KOKRJURY = 3 ;
+               OTHERWISE       KOKRRIRE.KOKRJURY = 0 ;
+             END ;
+           END ;
+         KOKRRIRE.KOKRDTKO = SS17DXK1 ;
+
+         WK_UKE_ATSUKA = SS17UKTU.SS17UTKB ;
+         IF  DEF_UKE_ATSU2 = 2
+         THEN
+           DO ;
+             IF  SS17GYOS = 4210  |
+                 SS17GYOS = 4220
+             THEN ;
+             ELSE
+               DEF_UKE_ATSU2 = 1 ;
+           END ;
+         ELSE ;
+         SS17UKTU.SS17UTKB = WK_UKE_ATSUKA ;
+         KOKRUKJO.KOKRATSU = SS17UKTU.SS17UTKB ;
+
+         KOKRUKJO.KOKRTNCD = SS17UKTU.SS17UTCD ;
+         KOKRUKJO.KOKRSHAI = SS17UKTU.SS17UDSU ;
+         KOKRUKJO.KOKRSHAK = SS17UKTU.SS17USSU ;
+         KOKRUKJO.KOKRUYMD = SS17UKTU.SS17UJIK ;
+         KOKRUKJO.KOKRTROK = PIC_P_DATE ;
+         PIC13 = 0 ;
+         IF  SS17HTNI.SS17NNCD = (7)'9'
+         THEN  PIC13_AR1 = '9' ;
+         ELSE  PIC13_AR2 = SS17HTNI.SS17NNCD ;
+         IF  SS17KEHI.SS17HARY ý= 0  |
+             SS17AZUK.SS17TATE ý= 0
+         THEN
+           DO ;
+             KOKRSSSR.KOKRKTAI = 2 ;
+             KOKRSSSR.KOKRNOSQ = PIC13 ;
+           END ;
+         ELSE
+           DO ;
+             IF  SS17SSKB = 2
+             THEN
+               KOKRSSSR.KOKRKTAI = 2 ;
+             ELSE ;
+           END ;
+         IF  KOKRKUBN.KOKRMTCK = 1
+         THEN
+           DO ;
+             KOKRSSSR.KOKRKEIT = SS17SSKB ;
+             KOKRSSSR.KOKRTCOD = SS17UKTU.SS17UTCD ;
+             KOKRSSSR.KOKRSQNO = PIC13 ;
+           END ;
+         ELSE ;
+         KOKRTSOK.KOKRHENK = SS17TASH.SS17TAKB ;
+         KOKRTSOK.KOKRTONO = SS17TASH.SS17TANO ;
+         KOKRUCIW.KOKRHACI = SS17RYOZ.SS17HATZ ;
+         KOKRUCIW.KOKRCYAK = SS17RYOZ.SS17TYAZ ;
+         KOKRUCIW.KOKRTOKI = SS17RYOZ.SS17TOKZ ;
+         KOKRUCIW.KOKRCKHR = SS17RYOZ.SS17CYAZ ;
+         KOKRUCIW.KOKRRENR = SS17RYOZ.SS17RRUZ ;
+         KOKRUCIW.KOKRSHUK = SS17RYOZ.SS17SSAZ ;
+         KOKRUCIW.KOKRHITA = SS17RYOZ.SS17CHAZ ;
+         KOKRUCIW.KOKRKOSO = SS17RYOZ.SS17FERZ ;
+         KOKRUCIW.KOKRKOSO = SS17RYOZ.SS17FERZ ;
+         KOKRUCIW.KOKRCHOS = SS17RYOZ.SS17TYOZ ;
+         KOKRUCIW.KOKRKONP = SS17RYOZ.SS17KONZ ;
+         KOKRUCIW.KOKRKOSK = SS17RYOZ.SS17HIGZ ;
+         KOKRUCIW.KOKRETCE = SS17RYOZ.SS17ETCZ ;
+         KOKRUCIW.KOKRYOBI = SS17RYOZ.SS17YOBZ ;
+         KOKRKUCI.KOKRKHKB = SS17KEHI.SS17HAKB ;
+         KOKRKUCI.KOKRKHKN = SS17KEHI.SS17HARY ;
+         KOKRDIST.KOKRKMSK = SS17KMTE.SS17SYKZ ;
+         KOKRDIST.KOKRTOSI = SS17KMTE.SS17HAKZ ;
+         KOKRSEIQ.KOKRHASS = SS17HSOZ ;
+
+
+
+
+
+
+
+
+         KOKRGRUP.KOKRJUSH = SS17HTNZ.SS17ADDZ ;
+         KOKRGRUP.KOKRNAME = SS17HTNZ.SS17NNMZ ;
+         KOKRNUAD          = SS17NUKZ ;
+         PIC11 = SS17UKTU.SS17UJIK ;
+         LSS0110_IN = PIC11_DTTM_DATE ;
+         CALL  LSS0110  ( LSS0110_IN , LSS0110_ANS ) ;
+         KOKRTUSN.KOKRUKHI = DEF_LSS0110_ANS ;
+         KOKRSAIS.KOKRATKA = SS17HYOZ.SS17AATZ ;
+         TNCDAREA          = SS17HYOZ.SS17ENTZ ;
+         KOKRSAIS.KOKRLATN = WK_TNCD2          ;
+
+
+         IF  SS17GMKB = 46  |  SS17GMKB = 56  |
+             SS17SYUZ.SS17SHOZ = 600  |
+             SS17SYUZ.SS17KIJZ = 02
+         THEN
+           DO ;
+             IF  SS17HTNI.SS17NNCD ý= 9999999
+             THEN
+               DO ;
+                 LBOND_IN = SS17HTNI.SS17NNCD ;
+                 CALL  LBOND10  ( LBOND_IN,LBOND_ANS ) ;
+                 IF  BOUNDNIN = '0000000'  &
+                     ( SS17GMKB = 46  |  SS17GMKB = 56 )
+                 THEN
+                   DO ;
+                     SS17SYUZ.SS17SHOZ = 650 ;
+                     SS17SYUZ.SS17KIJZ = 04 ;
+                   END ;
+                 ELSE
+                   DO ;
+                     IF  BOUNDJIG = '04'
+                     THEN
+                       DO ;
+                         SS17SYUZ.SS17SHOZ = 650 ;
+                         SS17SYUZ.SS17KIJZ = 04 ;
+
+                       END ;
+                     ELSE ;
+                   END ;
+               END ;
+             ELSE ;
+           END ;
+         ELSE ;
+
+         IF  SS17SYUZ.SS17SHOZ  >=  200  &
+             SS17SYUZ.SS17SHOZ  <=  299
+         THEN
+           DO ;
+             IF  SS17KOSU = 0
+             THEN
+               DO ;
+                 DISPLAY('*  KOSUU ZERO   OKR-NO  = '||SS17OKNO||
+                         '   ==>  BS30010P') ;
+                 SELECT ;
+                   WHEN ( SS17KGRM <= 200 )   SS17SYUZ.SS17SHOZ = 200 ;
+                   WHEN ( SS17KGRM <= 2000 )  SS17SYUZ.SS17SHOZ = 300 ;
+                   WHEN ( SS17KGRM <= 8000 )  SS17SYUZ.SS17SHOZ = 400 ;
+                   OTHERWISE                  SS17SYUZ.SS17SHOZ = 500 ;
+                 END ;
+                 GO TO  SHOHIN_SET_ENDSTEP ;
+               END ;
+             ELSE ;
+             KIRO_IF = ( SS17KGRM * 10 ) / SS17KOSU ;
+             SELECT ;
+               WHEN ( SS17KGRM <= 200 )
+                 DO ;
+                   IF  KIRO_IF  <=  320
+                   THEN
+                     DO ;
+                       SELECT  ( SS17SYUZ.SS17SHOZ ) ;
+                         WHEN  ( 210 ) ;
+                         WHEN  ( 250 ) ;
+                         OTHERWISE
+                           DO ;
+                             IF  SUBSTR(SS17GMKB,2,1) = '8'  |
+                                 SUBSTR(SS17GMKB,2,1) = '5'
+                             THEN
+                               SS17SYUZ.SS17SHOZ = 210 ;
+                             ELSE
+                               SS17SYUZ.SS17SHOZ = 200 ;
+                           END ;
+                       END ;
+                     END ;
+                   ELSE
+                     SS17SYUZ.SS17SHOZ = 250 ;
+                 END ;
+               WHEN ( SS17KGRM <= 2000 )
+                 SS17SYUZ.SS17SHOZ = 300 ;
+               WHEN ( SS17KGRM <= 8000 )
+                 SS17SYUZ.SS17SHOZ = 400 ;
+               OTHERWISE
+                 SS17SYUZ.SS17SHOZ = 500 ;
+             END ;
+           END ;
+         ELSE ;
+   SHOHIN_SET_ENDSTEP :
+
+         KOKRSNYU.KOKRKIKB = SS17SYUZ.SS17KIJZ ;
+         KOKRSNYU.KOKRHINC = SS17SYUZ.SS17SHOZ ;
+         KOKRROKU.KOKRUCIN = SS17KOTZ.SS17UNTZ ;
+         KOKRROKU.KOKRRKNK = SS17KOTZ.SS17RYKZ ;
+         KOKRSTEI.KOKRHSKB = SS17HASI.SS17SIKB ;
+         KOKRSTEI.KOKRHYYM = SS17HASI.SS17SITI ;
+         KOKRGYOS          = SS17GYOS ;
+
+         IF (KOKRKUBN.KOKRGAMN >= 60)
+           | (KOKRSNYU.KOKRHINC  = 921)
+            | (KOKRKUBN.KOKRGAMN < 10 & KOKRKUBN.KOKRTYPE = 7)
+         THEN
+           DO ;
+             IF (TNM_14_1 = '~')
+              | (KOKRTNCD=8227) | (KOKRTNCD=8225) | (KOKRTNCD=8224)
+             THEN ;
+
+             ELSE
+               DO ;
+                 KOKRHIJO.KOKRAKAT = 51 ;
+                 KOKRHIJO.KOKRJOKY = 8 ;
+                 IF KOKRKUBN.KOKRGAMN < 10
+                   & KOKRKUBN.KOKRTYPE = 7
+                    & SS17HUKA.SS17HITN > 0
+                     & SS17HUKA.SS17HYMD > 0
+                 THEN
+                   DO ;
+                     KOKRHIJO.KOKRTENC = SS17HUKA.SS17HITN ;
+                     KOKRHIJO.KOKRGSHI = SS17HUKA.SS17HYMD * 10000 + 1 ;
+                   END ;
+                 ELSE
+                   DO ;
+                     KOKRHIJO.KOKRTENC = KOKRUKJO.KOKRTNCD ;
+                     IF KOKRKUBN.KOKRGAMN = 61
+                     THEN
+                       DO ;
+
+                         YMDHM = KOKRUKJO.KOKRUYMD ;
+                         SELECT ;
+   WHEN(KOKRUKJO.KOKRSHAK >= 70000000)
+                             YMDHM_10_2 = 58 ;
+   WHEN(KOKRUKJO.KOKRSHAI = 00000001)
+                             YMDHM_10_2 = 57 ;
+                           OTHERWISE
+                             YMDHM_10_2 = 59 ;
+                         END ;
+                         KOKRHIJO.KOKRGSHI = YMDHM ;
+                       END ;
+                     ELSE KOKRHIJO.KOKRGSHI = KOKRUKJO.KOKRUYMD ;
+                   END ;
+               END ;
+           END ;
+         ELSE ;
+
+  IF KOKRKUBN.KOKRGAMN < 10 & KOKRKUBN.KOKRTYPE = 7
+  THEN WK_KAS_CNT = WK_KAS_CNT + 1 ;
+  ELSE ;
+
+         IF  IN_UKE_RECID = '101'
+         THEN
+           DO ;
+             KOKRHIJO.KOKRAKAT = 51 ;
+             KOKRHIJO.KOKRTENC = SS17HUKA.SS17HITN ;
+             KOKRHIJO.KOKRJOKY = 8 ;
+             PIC11_DTTM_ZERO = 0 ;
+             PIC11_DTTM_DATE = SS17HUKA.SS17HYMD ;
+             PIC11_DTTM_TIME = 0 ;
+             KOKRHIJO.KOKRGSHI = PIC11 ;
+             KOKRSSSR.KOKRTCOD = SS17HUKA.SS17SITN ;
+             WK_FUKKA_SQ1      = 9 ;
+             WK_FUKKA_SQ2      = SS17HUKA.SS17SQNO ;
+             KOKRSSSR.KOKRSQNO = WK_FUKKA_SQNO ;
+           END ;
+         ELSE ;
+
+         KOKR_WKRYO = KOKRUCIW.KOKRHACI + KOKRUCIW.KOKRCYAK
+                    + KOKRUCIW.KOKRTOKI + KOKRUCIW.KOKRCKHR
+                    + KOKRUCIW.KOKRRENR + KOKRUCIW.KOKRSHUK
+                    + KOKRUCIW.KOKRHITA + KOKRUCIW.KOKRKOSO
+                    + KOKRUCIW.KOKRCHOS + KOKRUCIW.KOKRKONP
+                    + KOKRUCIW.KOKRKOSK + KOKRUCIW.KOKRETCE
+                    + KOKRUCIW.KOKRYOBI ;
+         IF  SS17MSUN.SS17MRYK  <  KOKR_WKRYO
+         THEN
+           DO ;
+             RYOKAREA          = KOKR_WKRYO ;
+             SS17MSUN.SS17MRYK = WK_RYOK2   ;
+           END ;
+         ELSE ;
+         KOKRMISY.KOKRRYOK = SS17MSUN.SS17MRYK ;
+
+         LENG = 540 + 12 ;
+         OUT_VAR_DATA = SUBSTR(OUT_ISRT_DEF,1,LENG) ;
+         WRITE  FILE(OKRJYAD) FROM(OUT_VAR_DATA) ;
+         WK_OKR_OUTCNT = WK_OKR_OUTCNT + 1 ;
+
+         IF  RETC_FLG ý= '1'
+         THEN
+           DO ;
+             CALL  PLIRETC (0) ;
+           END ;
+         ELSE ;
+
+         IF  SS17SYUZ.SS17SHOZ = 921
+         THEN
+           GO TO  OKRJ_MS_ENDSTEP ;
+         ELSE ;
+
+         WK_CHAR28 = SS17NUKZ ;
+         IF  WK_CHAR28_17_1 = '@'
+         THEN
+           DO ;
+             OUT_KAMOTSU = '' ;
+             KMTTSKEY = WK_CHAR28_18_11 ;
+             KMTTSOKR = SS17OKNO ;
+             KMTTSUYY = WK_YY ;
+             KMTTSUMM = WK_MM ;
+             KMTTSUDD = WK_DD ;
+             KMTTSNCD = SS17HTNI.SS17NNCD ;
+             WRITE  FILE(OTKAMOT) FROM(OUT_KAMOTSU) ;
+           END ;
+         ELSE ;
+
+         IF  IN_UKE_RECID = '100' |
+             IN_UKE_RECID = '102'
+         THEN
+           DO ;
+             BCH12_SW = '1' ;
+             CALL  B12_LOG_SUB ;
+             CALL  B13_LOG_SUB ;
+             CALL  B14_LOG_SUB ;
+             CALL  B15_LOG_SUB ;
+             DXHCG_PIC7   = KOKRNIOK.KOKRCOCD ;
+             DXHCG_MODIN1 = DXHCG_PIC7 ;
+             DXHCG_MODIN2 = 'A' ;
+             CALL  LIE0010  ( DXHCG_MODIN,MOD_DXHCG ) ;
+             CALL  B16_LOG_SUB ;
+             CALL  BDX_LOG_SUB ;
+             CALL  B1D_LOG_SUB ;
+             UN_RYO_KEI = KOKRMISY.KOKRUNCI + KOKRMISY.KOKRRYOK ;
+
+             IF KOKRKUBN.KOKRUNKI  <=  4
+             THEN
+               DO ;
+                 ERR_LOG_SW = '15' ;
+                 CALL  ERR_LOG_SUB_OKR ;
+               END ;
+             ELSE ;
+           END ;
+         ELSE ;
+   OKRJ_MS_ENDSTEP :
+       END ;
+   END  OKRJ_MS_SUB ;
+
+   CORONA_UPDATA_SUB : PROC ;
+     OUT_ISRT_DATA  = '' ;
+     OUT_ISRT_OKRNO = SS17OKNO ;
+     OUT_ISRT_KUBUN = '2' ;
+     OUT_ISRT_OKRAR = OKR_MSAR ;
+
+     KOKRNIUK.KOKRKNAM = SS17CKNN.SS17KNNM ;
+     KOKRTSOK.KOKRTONO = SS17TASH.SS17TANO ;
+     KOKRSEIQ.KOKRHASS = SS17HSOZ ;
+
+     LENG = 540 + 12 ;
+     OUT_VAR_DATA = SUBSTR(OUT_ISRT_DEF,1,LENG) ;
+     WRITE  FILE(OKRJYUP) FROM(OUT_VAR_DATA) ;
+     WK_OKR_UPCNT = WK_OKR_UPCNT + 1 ;
+   END  CORONA_UPDATA_SUB ;
+
+   B12_LOG_SUB : PROC ;
+     IF  BCH12_SW = '1'
+
+     THEN
+       DO ;
+         LSB0120_DEFA = '' ;
+         S12AHEDE.S12AIYMD = PIC_P_DATE ;
+         S12AHEDE.S12ARCID = 10 ;
+         S12AHEDE.S12ARCLH = 400 ;
+         S12ANYUR.S12AIYER = IN_OKR_DATA.SS17TIME.SS17INYY ;
+         S12ANYUR.S12AMOTH = IN_OKR_DATA.SS17TIME.SS17INMM ;
+         S12ANYUR.S12AIDAY = IN_OKR_DATA.SS17TIME.SS17INDD ;
+         S12ANYUR.S12AIHMS = IN_OKR_DATA.SS17TIME.SS17INHH ;
+         S12ANYUR.S12AIMIN = IN_OKR_DATA.SS17TIME.SS17INMI ;
+         S12ANYUR.S12AISPI = IN_OKR_DATA.SS17TIME.SS17INSS ;
+         S12AOKNO          = IN_OKR_DATA.SS17OKNO ;
+         S12AOKKB          = IN_OKR_DATA.SS17OKKB ;
+         S12AMTCK          = IN_OKR_DATA.SS17MCKB ;
+         S12ASSNO          = IN_OKR_DATA.SS17UKTU.SS17UDSU ;
+         S12ADSNO          = IN_OKR_DATA.SS17UKTU.SS17USSU ;
+         S12AHAKK.S12AHTCD = IN_OKR_DATA.SS17UKTU.SS17UTCD ;
+         PIC11             = IN_OKR_DATA.SS17UKTU.SS17UJIK ;
+         S12AHAKK.S12AHYMD = PIC11_DTTM_DATE ;
+         S12AHAKK.S12AAORK = IN_OKR_DATA.SS17UKTU.SS17UTKB ;
+         S12ASHCD          = IN_OKR_DATA.SS17SYUZ.SS17SHOZ ;
+         S12ANGMN          = IN_OKR_DATA.SS17GMKB ;
+         S12ASKKB          = IN_OKR_DATA.SS17SYUZ.SS17KIJZ ;
+         S12ASTKO.S12ASCCD = IN_OKR_DATA.SS17HTNI.SS17HCCD ;
+         S12ASTKO.S12ASTCD = IN_OKR_DATA.SS17HTNI.SS17NNCD ;
+         S12ASTKO.S12ASTGC = IN_OKR_DATA.SS17GYOS ;
+         S12AENKO.S12AECCD = IN_OKR_DATA.SS17CKNN.SS17CKCD ;
+         S12AENKO.S12AENTL = IN_OKR_DATA.SS17CNTL ;
+         S12AKOSU          = IN_OKR_DATA.SS17KOSU ;
+         S12AKIRO          = IN_OKR_DATA.SS17KGRM ;
+         S12AMSUN.S12AUNCN = IN_OKR_DATA.SS17MSUN.SS17MUNC ;
+         S12AMSUN.S12AMSKN = IN_OKR_DATA.SS17MSUN.SS17MRYK ;
+         S12AMSUN.S12AMWKB = IN_OKR_DATA.SS17MSUN.SS17WMKB ;
+         S12AMSUN.S12AMWRT = IN_OKR_DATA.SS17MSUN.SS17WMRT ;
+         S12ASZUK.S12AKHTK = IN_OKR_DATA.SS17AZUK.SS17TATE ;
+         S12ASZUK.S12AHTYP = IN_OKR_DATA.SS17AZUK.SS17SHKB ;
+         S12ASZUK.S12AHKKN = IN_OKR_DATA.SS17AZUK.SS17HOKN ;
+         S12ASZUK.S12AHOKR = IN_OKR_DATA.SS17AZUK.SS17HORY ;
+         S12ABUBI          = IN_OKR_DATA.SS17BUBI ;
+         S12ARONE.S12ADRKB = IN_OKR_DATA.SS17DIHZ.SS17KKBZ ;
+         S12ARONE.S12ADRKN = IN_OKR_DATA.SS17DIHZ.SS17DAKN ;
+         S12ARONE.S12ADRRK = IN_OKR_DATA.SS17DIHZ.SS17RNKN ;
+         S12ARONE.S12ATEGO = IN_OKR_DATA.SS17DIHZ.SS17TESO ;
+         S12ARONE.S12ATEKE = IN_OKR_DATA.SS17DIHZ.SS17TEKE ;
+         S12ARYOK.S12AHATW = IN_OKR_DATA.SS17RYOZ.SS17HATZ ;
+         S12ARYOK.S12ATYAW = IN_OKR_DATA.SS17RYOZ.SS17TYAZ ;
+         S12ARYOK.S12ATOKW = IN_OKR_DATA.SS17RYOZ.SS17TOKZ ;
+         S12ARYOK.S12ATYAR = IN_OKR_DATA.SS17RYOZ.SS17CYAZ ;
+         S12ARYOK.S12AREUR = IN_OKR_DATA.SS17RYOZ.SS17RRUZ ;
+         S12ARYOK.S12ARKHT = IN_OKR_DATA.SS17RYOZ.SS17SSAZ ;
+         S12ARYOK.S12AHAIR = IN_OKR_DATA.SS17RYOZ.SS17CHAZ ;
+         S12ARYOK.S12AFERR = IN_OKR_DATA.SS17RYOZ.SS17FERZ ;
+         S12ARYOK.S12ATYOR = IN_OKR_DATA.SS17RYOZ.SS17TYOZ ;
+         S12ARYOK.S12AKONR = IN_OKR_DATA.SS17RYOZ.SS17KONZ ;
+         S12ARYOK.S12AHIGR = IN_OKR_DATA.SS17RYOZ.SS17HIGZ ;
+         S12ARYOK.S12AETCR = IN_OKR_DATA.SS17RYOZ.SS17ETCZ ;
+         S12ARYOK.S12AYOBI = IN_OKR_DATA.SS17RYOZ.SS17YOBZ ;
+         S12AKEHI.S12AHAKB = IN_OKR_DATA.SS17KEHI.SS17HAKB ;
+         S12AKEHI.S12AHARY = IN_OKR_DATA.SS17KEHI.SS17HARY ;
+         S12AKEHI.S12ATOKB = IN_OKR_DATA.SS17KEHI.SS17TOKB ;
+         S12AKEHI.S12ATORY = IN_OKR_DATA.SS17KEHI.SS17TORY ;
+         S12AKMTE.S12AKMSK = IN_OKR_DATA.SS17KMTE.SS17SYKZ ;
+         S12AKMTE.S12AKMTO = IN_OKR_DATA.SS17KMTE.SS17HAKZ ;
+         S12AKMTE.S12AKMTI = IN_OKR_DATA.SS17KMTE.SS17ROKZ ;
+         S12ATDAY.S12ATNUK = DEF_LSS0110_ANS ;             ;
+         S12ASAIS.S12ASHAT = IN_OKR_DATA.SS17HYOZ.SS17AATZ ;
+         TNCDAREA          = IN_OKR_DATA.SS17HYOZ.SS17ENTZ ;
+         S12ASAIS.S12ASHTC = WK_TNCD2                      ;
+         S12AKOTE.S12AKTUN = IN_OKR_DATA.SS17KOTZ.SS17UNTZ ;
+         S12AKOTE.S12AKTRK = IN_OKR_DATA.SS17KOTZ.SS17RYKZ ;
+         S12ASYPT          = PIC11_DTTM_TIME ;
+         S12AHISS.S12ADHUT = IN_OKR_DATA.SS17UKTU.SS17UTCD ;
+         S12AHISS.S12ADHUD = PIC11_DTTM_DATE ;
+
+         S12AKNNM          = IN_OKR_DATA.SS17CKNN.SS17KNNM ;
+         S12ANNMZ          = IN_OKR_DATA.SS17HTNZ.SS17NNMZ ;
+       END ;
+
+     ELSE
+       DO ;
+         LSB0120_DEFA = '' ;
+         S12AHEDE.S12AIYMD = PIC_P_DATE ;
+         S12AHEDE.S12ARCID = 11 ;
+         S12AHEDE.S12ARCLH = 400 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,1,2) ;
+         S12ANYUR.S12AIYER = WK_PIC2 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,3,2) ;
+         S12ANYUR.S12AMOTH = WK_PIC2 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,5,2) ;
+         S12ANYUR.S12AIDAY = WK_PIC2 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,1,2) ;
+         S12ANYUR.S12AIHMS = WK_PIC2 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,3,2) ;
+         S12ANYUR.S12AIMIN = WK_PIC2 ;
+         WK_CHR2 = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,5,2) ;
+         S12ANYUR.S12AISPI = WK_PIC2 ;
+         S12AOKNO          = IN_KRI_DATA.SSYUKONO ;
+         S12AOKKB          = 3 ;
+         S12AMTCK          = 0 ;
+         S12ADLKB          = 0 ;
+         S12ASSNO          = IN_KRI_DATA.SSYUKOFU.SSYUKDNO ;
+         S12ADSNO          = IN_KRI_DATA.SSYUKOFU.SSYUKSNO ;
+         S12AHAKK.S12AHTCD = IN_KRI_DATA.SSYUKOFU.SSYUTNCD ;
+         S12AHAKK.S12AHYMD = IN_KRI_DATA.SSYUKOFU.SSYUKYMD ;
+         S12AHAKK.S12AAORK = IN_KRI_DATA.SSYUKOFU.SSYUKAKB ;
+         S12ANGMN          = IN_KRI_DATA.SSYUKOFU.SSYUNYGM ;
+         S12AKOSU          = IN_KRI_DATA.SSYUKOSU.SSYUSKOS ;
+         S12AKIRO          = IN_KRI_DATA.SSYUJURY ;
+         S12AHISS.S12ADHUT = IN_KRI_DATA.SSYUKOFU.SSYUTNCD ;
+         S12AHISS.S12ADHUD = IN_KRI_DATA.SSYUKOFU.SSYUKYMD ;
+         S12AKARI.S12AKRKS = IN_KRI_DATA.SSYUKOSU.SSYUKKOS ;
+         S12AKARI.S12AKRRY = IN_KRI_DATA.SSYURIYU ;
+       END ;
+     IF  BCH12_SW = '1'
+     THEN
+       DO ;
+         IF (KOKRUKJO.KOKRATSU = 11)
+           | (KOKRUKJO.KOKRATSU = 21)
+           | (KOKRKUBN.KOKRGAMN >= 61)
+ | (IN_OKR_DATA.SS17GMKB < 10 & IN_OKR_DATA.SS17OKKB = 7)
+            | S12AHTCD=8227 | S12AHTCD=8225 | S12AHTCD=8224
+            | S12ADHUT=8227 | S12ADHUT=8225 | S12ADHUT=8224
+            | S12ADHHT=8227 | S12ADHHT=8225 | S12ADHHT=8224
+            | S12ADHTT=8227 | S12ADHTT=8225 | S12ADHTT=8224
+         THEN GO TO  B12_LOG_STEP010 ;
+         ELSE ;
+       END ;
+     ELSE
+       DO ;
+         IF  DEF_ISRT_KRIMS.VJKHKOFU.VJKHUKKB = 11  |
+             DEF_ISRT_KRIMS.VJKHKOFU.VJKHUKKB = 21
+         THEN
+           GO TO  B12_LOG_STEP010 ;
+         ELSE ;
+       END ;
+     RR_LENG = 400 ;
+     RR_TYPE = 'W' ;
+     CALL  LSB0120  (RR_PTR12,RR_LENG,RR_TYPE,RR_RTNCD) ;
+     B12_LOG_STEP010 :
+   END  B12_LOG_SUB ;
+
+
+
+   B13_LOG_SUB : PROC ;
+     LSB0130_DEFA = '' ;
+     S13AHEAD.S13AAYMD = PIC_P_DATE ;
+     S13AHEAD.S13AREID = 10 ;
+     S13AHEAD.S13ALENG = 600 ;
+     S13ATIME.S13AINYY = SS17TIME.SS17INYY ;
+     S13ATIME.S13AINMM = SS17TIME.SS17INMM ;
+     S13ATIME.S13AINDD = SS17TIME.SS17INDD ;
+     S13ATIME.S13AINHH = SS17TIME.SS17INHH ;
+     S13ATIME.S13AINMI = SS17TIME.SS17INMI ;
+     S13ATIME.S13AINSS = SS17TIME.SS17INSS ;
+     S13AOKNO          = SS17OKNO ;
+     S13AOKKB          = SS17OKKB ;
+     S13AMCKB          = SS17MCKB ;
+     S13AUKKB          = SS17UKKB ;
+     S13AGMKB          = SS17GMKB ;
+     S13AHTNI.S13AHCCD = SS17HTNI.SS17HCCD ;
+     S13AHTNI.S13ANNCD = SS17HTNI.SS17NNCD ;
+     S13ACKNN.S13ACKCD = SS17CKNN.SS17CKCD ;
+     S13ACKNN.S13AKNNM = SS17CKNN.SS17KNNM ;
+     S13ACNTL          = SS17CNTL ;
+     S13AKOSU          = SS17KOSU ;
+     S13AKGRM          = SS17KGRM ;
+     S13AMSUN.S13AMUNC = SS17MSUN.SS17MUNC ;
+     S13AMSUN.S13AMRYK = SS17MSUN.SS17MRYK ;
+     S13AMSUN.S13AWMKB = SS17MSUN.SS17WMKB ;
+     S13AMSUN.S13AWMRT = SS17MSUN.SS17WMRT ;
+     S13AAZUK.S13ATATE = SS17AZUK.SS17TATE ;
+     S13AAZUK.S13ASHKB = SS17AZUK.SS17SHKB ;
+     S13AAZUK.S13AHOKN = SS17AZUK.SS17HOKN ;
+     S13AAZUK.S13AHORY = SS17AZUK.SS17HORY ;
+     S13ABUBI          = SS17BUBI ;
+     S13ADIHZ.S13AKKBZ = SS17DIHZ.SS17KKBZ ;
+     S13ADIHZ.S13ADAKN = SS17DIHZ.SS17DAKN ;
+     S13ADIHZ.S13ARNKN = SS17DIHZ.SS17RNKN ;
+     S13ADIHZ.S13ATESO = SS17DIHZ.SS17TESO ;
+     S13ADIHZ.S13ATEKE = SS17DIHZ.SS17TEKE ;
+     S13AUKTU.S13AUTKB = SS17UKTU.SS17UTKB ;
+     S13AUKTU.S13AUTCD = SS17UKTU.SS17UTCD ;
+     S13AUKTU.S13AUDSU = SS17UKTU.SS17UDSU ;
+     S13AUKTU.S13AUSSU = SS17UKTU.SS17USSU ;
+     S13AUKTU.S13AUJIK = SS17UKTU.SS17UJIK ;
+     S13AUKTU.S13ACTOR = SS17UKTU.SS17CTOR ;
+     S13ATASH.S13ATAKB = SS17TASH.SS17TAKB ;
+     S13ATASH.S13ATANO = SS17TASH.SS17TANO ;
+     S13ARYOZ.S13AHATZ = SS17RYOZ.SS17HATZ ;
+     S13ARYOZ.S13ATYAZ = SS17RYOZ.SS17TYAZ ;
+     S13ARYOZ.S13ATOKZ = SS17RYOZ.SS17TOKZ ;
+     S13ARYOZ.S13ACYAZ = SS17RYOZ.SS17CYAZ ;
+     S13ARYOZ.S13ARRUZ = SS17RYOZ.SS17RRUZ ;
+     S13ARYOZ.S13ASSAZ = SS17RYOZ.SS17SSAZ ;
+     S13ARYOZ.S13ACHAZ = SS17RYOZ.SS17CHAZ ;
+     S13ARYOZ.S13AFERZ = SS17RYOZ.SS17FERZ ;
+     S13ARYOZ.S13ATYOZ = SS17RYOZ.SS17TYOZ ;
+     S13ARYOZ.S13AKONZ = SS17RYOZ.SS17KONZ ;
+     S13ARYOZ.S13AHIGZ = SS17RYOZ.SS17HIGZ ;
+     S13ARYOZ.S13AETCZ = SS17RYOZ.SS17ETCZ ;
+     S13ARYOZ.S13AYOBZ = SS17RYOZ.SS17YOBZ ;
+     S13AKEHI.S13AHAKB = SS17KEHI.SS17HAKB ;
+     S13AKEHI.S13AHARY = SS17KEHI.SS17HARY ;
+     S13AKEHI.S13ATOKB = SS17KEHI.SS17TOKB ;
+     S13AKEHI.S13ATORY = SS17KEHI.SS17TORY ;
+     S13AKMTE.S13ASYKZ = SS17KMTE.SS17SYKZ ;
+     S13AKMTE.S13AHAKZ = SS17KMTE.SS17HAKZ ;
+     S13AKMTE.S13AROKZ = SS17KMTE.SS17ROKZ ;
+     S13AHSOZ          = SS17HSOZ ;
+     S13AHTNZ.S13AADDZ = SS17HTNZ.SS17ADDZ ;
+     S13AHTNZ.S13ANNMZ = SS17HTNZ.SS17NNMZ ;
+     S13ANUKZ          = SS17NUKZ ;
+     S13ATSNZ.S13AUKTZ = DEF_LSS0110_ANS ;
+     S13AHYOZ.S13AAATZ = SS17HYOZ.SS17AATZ ;
+     S13AHYOZ.S13AENTZ = SS17HYOZ.SS17ENTZ ;
+     S13ASYUZ.S13AKIJZ = SS17SYUZ.SS17KIJZ ;
+     S13ASYUZ.S13ASHOZ = SS17SYUZ.SS17SHOZ ;
+     S13AKOTZ.S13AUNTZ = SS17KOTZ.SS17UNTZ ;
+     S13AKOTZ.S13ARYKZ = SS17KOTZ.SS17RYKZ ;
+     S13AHASI.S13ASIKB = SS17HASI.SS17SIKB ;
+     S13AHASI.S13ASITI = SS17HASI.SS17SITI ;
+     S13AGYOS          = SS17GYOS ;
+     S13AJURY          = KOKRRIRE.KOKRJURY ;
+     S13ASSKB          = SS17SSKB ;
+     S13AKAME          = SS17DXK3 ;
+     RR_LENG = 600 ;
+     RR_TYPE = 'W' ;
+     CALL  LSB0130  (RR_PTR13,RR_LENG,RR_TYPE,RR_RTNCD) ;
+   END  B13_LOG_SUB ;
+
+
+
+   B14_LOG_SUB : PROC ;
+     LSB0140_AREA = LSB0120_AREA ;
+     S14BMEDE.S14BRCID = 10 ;
+     RR_LENG = 400 ;
+     RR_TYPE = 'W' ;
+     IF S14BHTCD=8227 | S14BHTCD=8225 | S14BHTCD=8224
+      | S14BDHUT=8227 | S14BDHUT=8225 | S14BDHUT=8224
+      | S14BDHHT=8227 | S14BDHHT=8225 | S14BDHHT=8224
+      | S14BDHTT=8227 | S14BDHTT=8225 | S14BDHTT=8224
+     THEN ;
+     ELSE CALL  LSB0140  (RR_PTR14,RR_LENG,RR_TYPE,RR_RTNCD) ;
+   END  B14_LOG_SUB ;
+
+
+
+   B15_LOG_SUB : PROC ;
+     IF  IN_OKR_DATA.SS17DIHZ.SS17KKBZ = 0
+     THEN
+       DO ;
+         IF  IN_OKR_DATA.SS17DIHZ.SS17DAKN = 0
+         THEN  GO TO  B15_LOG_STEP1 ;
+         ELSE ;
+       END ;
+     ELSE ;
+     LSB0150_AREA = LSB0130_AR400 ;
+     S15CHEAD.S15CREID = 10 ;
+     S15CHEAD.S15CLENG = 400 ;
+     RR_LENG = 400 ;
+     RR_TYPE = 'W' ;
+     IF S15CUTCD=8227 | S15CUTCD=8225 | S15CUTCD=8224
+     THEN ;
+     ELSE CALL  LSB0150  (RR_PTR15,RR_LENG,RR_TYPE,RR_RTNCD) ;
+   B15_LOG_STEP1 :
+     IF  IN_OKR_DATA.SS17JURY = 1
+     THEN
+       DO ;
+         LSB0150_AREA = LSB0130_AR400;
+         S15CHEAD.S15CREID = 11 ;
+         S15CHEAD.S15CLENG = 400 ;
+         RR_LENG = 400 ;
+         RR_TYPE = 'W' ;
+        IF S15CUTCD=8227 | S15CUTCD=8225 | S15CUTCD=8224
+        THEN ;
+        ELSE CALL  LSB0150  (RR_PTR15,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       END ;
+     ELSE ;
+   END  B15_LOG_SUB ;
+
+
+
+   B16_LOG_SUB : PROC ;
+
+
+
+
+
+
+
+
+     LSB0160_AREA = LSB0130_AR400 ;
+     IF  SS17SYUZ.SS17SHOZ = 910
+       | SS17SYUZ.SS17SHOZ = 920
+       | SS17SYUZ.SS17SHOZ = 921
+       | SS17SYUZ.SS17SHOZ = 901
+       | SS17SYUZ.SS17SHOZ = 902
+       | SS17SYUZ.SS17SHOZ = 903
+       | SS17SYUZ.SS17SHOZ = 904
+     THEN
+       DO ;
+         IF SS17DXK3 = 1
+         THEN S16FJURY = 2 ;
+         ELSE ;
+
+         WK_KOK_6CNT = WK_KOK_6CNT + 1 ;
+         IF SS17DXK3 = 1
+         THEN WK_KOK_6MEI = WK_KOK_6MEI + 1 ;
+         ELSE ;
+
+       END ;
+     ELSE ;
+     S16FHEAD.S16FREID = 60 ;
+     S16FHEAD.S16FLENG = 400 ;
+     RR_LENG = 400 ;
+     RR_TYPE = 'W' ;
+     CALL  LSB0160  (RR_PTR16,RR_LENG,RR_TYPE,RR_RTNCD) ;
+
+
+
+
+
+
+
+     IF  DXHCG_HIKBN(1)    = '1' |
+         DXHCG_HIKBN(9)    = '1'
+     THEN
+       DO ;
+
+         IF  WK_CHAR28_17_1 = '@'
+         THEN
+           DO ;
+             IF  S16FHTNI.S16FNNCD = 0357443 |
+                 S16FHTNI.S16FNNCD = 0624222
+             THEN ;
+             ELSE
+               DO ;
+                 CHI_MST_SW = '1'B ;
+                 CHI_KEY = S16FCKNN.S16FCKCD ;
+                 READ  FILE(VKCHINM) INTO(CHI_MST) KEY(CHI_KEY) ;
+                 IF  CHI_MST_SW
+                 THEN
+                   DO ;
+                     S16FNUKZ = CHMCRCTY ;
+                     CHI_FND_SW = '1' ;
+                   END ;
+                 ELSE ;
+               END ;
+           END ;
+         ELSE ;
+
+         S16FHEAD.S16FREID = 40 ;
+         CALL  LSB0160  (RR_PTR16,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       END ;
+     ELSE ;
+  B16_LOG_STEP1 :
+
+     IF  IN_OKR_DATA.SS17TASH.SS17TAKB = 1  |
+         IN_OKR_DATA.SS17TASH.SS17TANO ý= '             '
+     THEN
+       DO ;
+         LSB0160_AREA = '' ;
+         S16AHEAD.S16ADATE = PIC_P_DATE ;
+         S16AHEAD.S16ARCID = 10 ;
+         S16AHEAD.S16ALENG = 400 ;
+         WK_CHR6 = SS17TIME.SS17INYY ||
+                   SS17TIME.SS17INMM || SS17TIME.SS17INDD ;
+         S16ANYUR.S16ANYDT = WK_PIC6 ;
+         WK_CHR6 = SS17TIME.SS17INHH ||
+                   SS17TIME.SS17INMI || SS17TIME.SS17INSS ;
+         S16ANYUR.S16ANYTM = WK_PIC6 ;
+         S16ACUST = SS17HTNI.SS17NNCD ;
+         S16ATOKR = SS17TASH.SS17TANO ;
+         S16AJOKR = SS17OKNO ;
+         S16AUKET.S16AUKTN = SS17UKTU.SS17UTCD ;
+         PIC11 = SS17UKTU.SS17UJIK ;
+         S16AUKET.S16AUKDT = PIC11_DTTM_DATE ;
+         RR_LENG = 400 ;
+         RR_TYPE = 'W' ;
+         CALL  LSB0160  (RR_PTR16,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       END ;
+     ELSE ;
+   B16_LOG_ENDSTEP :
+   END  B16_LOG_SUB ;
+
+
+
+
+
+   B1D_LOG_SUB : PROC ;
+   B1D_LOG_STEP1 :
+     IF ( IN_OKR_DATA.SS17OKNO >= 66000000000
+         &IN_OKR_DATA.SS17OKNO <= 69999999999)
+      | ( IN_OKR_DATA.SS17OKNO >= 95800000000
+         &IN_OKR_DATA.SS17OKNO <= 95999999999)
+      | ( IN_OKR_DATA.SS17DAKN >  0
+         &IN_OKR_DATA.SS17NNCD  = 0016015)
+     THEN
+       DO ;
+         LSW0130_AREA = '' ;
+         S1DAHDNO = ''     ;
+         S1DADTID = 'LA'   ;
+         S1DAOKRN = IN_OKR_DATA.SS17OKNO          ;
+         S1DANICD = IN_OKR_DATA.SS17HTNI.SS17NNCD ;
+         S1DATNCD = IN_OKR_DATA.SS17UKTU.SS17UTCD ;
+         S1DACKTN = IN_OKR_DATA.SS17HYOZ.SS17ENTZ ;
+         S1DATSNO = IN_OKR_DATA.SS17TASH.SS17TANO ;
+         WK_CHR6  = SS17TIME.SS17INYY ||
+                    SS17TIME.SS17INMM || SS17TIME.SS17INDD ;
+         S1DAIYMD = WK_PIC6 ;
+         PIC11    = SS17UKTU.SS17UJIK             ;
+         S1DATYMD = PIC11_DTTM_DATE               ;
+         WK_CHR6  = PIC11_DTTM_TIME || '00'       ;
+         S1DADDHM = WK_PIC6 ;
+         S1DASPAC = ''                            ;
+         RR_LENG = 256 ;
+         RR_TYPE = 'W' ;
+         IF SUBSTR(SS17CKNN.SS17CKCD,1,2) = '02'
+          | SUBSTR(SS17CKNN.SS17CKCD,1,2) = '03'
+          | SUBSTR(SS17CKNN.SS17CKCD,1,2) = '04'
+          | SUBSTR(SS17CKNN.SS17CKCD,1,2) = '05'
+          | SUBSTR(SS17CKNN.SS17CKCD,1,2) = '06'
+          | SUBSTR(SS17CKNN.SS17CKCD,1,2) = '07'
+         THEN
+           DO;
+             CALL  LSW0130  (RR_PTR1D,RR_LENG,RR_TYPE,RR_RTNCD) ;
+             B1DCNT = B1DCNT + 1;
+           END;
+         ELSE;
+       END ;
+     ELSE ;
+   B1D_LOG_ENDSTEP :
+   END  B1D_LOG_SUB ;
+
+
+
+
+   BDX_LOG_SUB : PROC ;
+
+
+
+
+
+     IF  DXHCG_HIKBN(1)    = '1'
+     THEN
+       DO ;
+
+
+
+         LSB0180_DEFA = '' ;
+         DXDLAHED.DXDLAYMD = PIC_P_DATE ;
+         DXDLAHED.DXDLARID = 10 ;
+         DXDLAHED.DXDLALEN = 300 ;
+         WK_CHR6 = SS17TIME.SS17INYY ||
+                   SS17TIME.SS17INMM || SS17TIME.SS17INDD ;
+         DXDLANYU.DXDLANDT = WK_PIC6 ;
+         WK_CHR6 = SS17TIME.SS17INHH ||
+                   SS17TIME.SS17INMI || SS17TIME.SS17INSS ;
+         DXDLANYU.DXDLANTM = WK_PIC6 ;
+         DXDLAJMC = SS17MCKB ;
+         DXDLAJOK = SS17OKNO ;
+         DXDLATMC = SS17MCKB ;
+         DXDLATOK = SS17TASH.SS17TANO ;
+         DXDLANCD = SS17HTNI.SS17NNCD ;
+         DXDLADKB = '00' ;
+         DXDLAUKE.DXDLAUTC = SS17UKTU.SS17UTCD ;
+         KUBNAREA          = SS17GMKB ;
+         DXDLAUKE.DXDLAUKB = WK_KUBN2 ;
+         DXDLAUKE.DXDLAUNO = SS17UKTU.SS17USSU ;
+         DXDLAUKE.DXDLAUSY = '00000' ;
+         PIC11 = SS17UKTU.SS17UJIK ;
+         DXDLAUKE.DXDLAUDT = PIC11_DTTM_DATE ;
+         DXDLAUKE.DXDLAUTM = PIC11_DTTM_TIME ;
+         DXDLAHIY = SS17HYOZ.SS17ENTZ ;
+         DXDLAKOS = SS17KOSU ;
+         DXDLAGKG = SS17KGRM ;
+         DXDLAKKM = SS17KMTE.SS17HAKZ ;
+         DXDLAUNC.DXDLAUN1 = SS17MSUN.SS17MUNC ;
+         DXDLAUNC.DXDLAUN2 = SS17MSUN.SS17MRYK +
+                             SS17AZUK.SS17HORY + SS17DIHZ.SS17TESO
+                             + SS17AZUK.SS17TATE ;
+         DXDLAUNC.DXDLAUKI = SS17MSUN.SS17MUNC + SS17MSUN.SS17MRYK +
+                             SS17AZUK.SS17HORY + SS17DIHZ.SS17TESO
+                             + SS17AZUK.SS17TATE ;
+         DXDLADAI = SS17DIHZ.SS17DAKN ;
+         DXDLAHOK = SS17AZUK.SS17HORY ;
+         DXDLATAT = SS17AZUK.SS17TATE ;
+         DXDLADBT = SS17DIHZ.SS17TESO ;
+         DXDLAHAT.DXDLAHCI = SS17HTNI.SS17HCCD ;
+         DXDLAHAT.DXDLAHNM = SS17HTNZ.SS17NNMZ ;
+         DXDLAHAT.DXDLAHJY = SS17HTNZ.SS17ADDZ ;
+
+
+
+
+
+         IF DXDLANCD = 0501470
+          | DXDLANCD = 0676447
+          | DXDLANCD = 0673451
+          | DXDLANCD = 1748758
+          | DXDLANCD = 1748766
+          | DXDLANCD = 0018425
+          | DXDLANCD = 0091265
+          | DXDLANCD = 0177528
+          | DXDLANCD = 1010165
+          | DXDLANCD = 1547944
+          | DXDLANCD = 1549883
+          | DXDLANCD = 1550822
+          | DXDLANCD = 1730945
+         THEN
+           DO;
+             DXDEXCIW      = SS17HATZ + SS17TYAZ ;
+             DXDEXWNW      = SS17TOKZ            ;
+           END ;
+         ELSE ;
+
+
+
+
+         IF DXDLANCD = 0311308 |
+            DXDLANCD = 1525221 |
+            DXDLANCD = 0703638 |
+            DXDLANCD = 1642174
+         THEN
+           DO ;
+             DXDEXCIW = SS17CHAZ + SS17KONZ ;
+             DXDEXWNW = SS17FERZ ;
+           END;
+         ELSE ;
+
+
+
+         DXDLACYA.DXDLACCI = SS17CKNN.SS17CKCD ;
+         DXDLACYA.DXDLACNM = SS17CKNN.SS17KNNM ;
+         DXDLACYA.DXDLACNJ = SS17NUKZ ;
+
+         IF  WK_CHAR28_17_1 = '@'
+         THEN
+           DO ;
+             IF  DXDLANCD = 0357443 |
+                 DXDLANCD = 0624222
+             THEN ;
+             ELSE
+               DO ;
+                 IF  CHI_FND_SW = '1'
+                 THEN
+                   DXDLACYA.DXDLACNJ = CHMCRCTY ;
+                 ELSE
+                   DO ;
+                     CHI_MST_SW = '1'B ;
+                     CHI_KEY = S16FCKNN.S16FCKCD ;
+                     READ  FILE(VKCHINM) INTO(CHI_MST) KEY(CHI_KEY) ;
+                     IF  CHI_MST_SW
+                     THEN
+                       DO ;
+                         DXDLACYA.DXDLACNJ = CHMCRCTY ;
+                         CHI_FND_SW = '1' ;
+                       END ;
+                     ELSE ;
+                   END ;
+               END ;
+           END ;
+         ELSE ;
+
+         DXDLASEQ = SS17HSOZ ;
+         DXDLASTE.DXDLASTK = SS17HASI.SS17SIKB ;
+         DXDLASTE.DXDLASTD = SS17HASI.SS17SITI ;
+         DXDLATAX          = SS17DIHZ.SS17RNKN ;
+         DXDLARNC          = SS17RYOZ.SS17RRUZ ;
+         DXDLABUB          = SS17BUBI ;
+         DXDLAHTR          = SS17HARY ;
+         DXDLACTL          = SS17CNTL ;
+         RR_LENG = 300 ;
+         RR_TYPE = 'W' ;
+         CALL  LSB0180  (RR_PTR18,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       END ;
+     ELSE ;
+
+
+
+
+     IF  SS17SYUZ.SS17SHOZ = 910  |
+         SS17SYUZ.SS17SHOZ = 921
+     THEN
+       GO TO  BDX_LOG_ENDSTEP ;
+     ELSE ;
+
+     LIEA00_MODIN = SS17CKNN.SS17CKCD ;
+     CALL  LIEA000  (LIEA00_MODIN,LIEA00_MODANS) ;
+     IF SUBSTR(VXCUSPAC,10,1) = '0'
+     THEN
+       DO ;
+         LSB0180_DEFB = '' ;
+         DXDLBHED.DXDLBYMD = PIC_P_DATE ;
+         DXDLBHED.DXDLBRID = 20 ;
+         DXDLBHED.DXDLBLEN = 300 ;
+         WK_CHR6 = SS17TIME.SS17INYY ||
+                   SS17TIME.SS17INMM || SS17TIME.SS17INDD ;
+         DXDLBNYU.DXDLBNDT = WK_PIC6 ;
+         WK_CHR6 = SS17TIME.SS17INHH ||
+                   SS17TIME.SS17INMI || SS17TIME.SS17INSS ;
+         DXDLBNYU.DXDLBNTM = WK_PIC6 ;
+         DXDLBJMC = SS17MCKB ;
+         DXDLBJOK = SS17OKNO ;
+         DXDLBTMC = SS17MCKB ;
+         DXDLBTOK = SS17TASH.SS17TANO ;
+         DXDLBNCD = SS17HTNI.SS17NNCD ;
+         DXDLBDKB = '10' ;
+         DXDLBUKE.DXDLBUTC = SS17UKTU.SS17UTCD ;
+         PIC11 = SS17UKTU.SS17UJIK ;
+         DXDLBUKE.DXDLBUDT = PIC11_DTTM_DATE ;
+         DXDLBKOS = SS17KOSU ;
+         DXDLBGKG = SS17KGRM ;
+         DXDLBUNC.DXDLBUN1 = SS17MSUN.SS17MUNC ;
+         DXDLBUNC.DXDLBUN2 = SS17MSUN.SS17MRYK ;
+         DXDLBUNC.DXDLBUKI = SS17MSUN.SS17MUNC + SS17MSUN.SS17MRYK ;
+         DXDLBDAI = SS17DIHZ.SS17DAKN ;
+         DXDLBHOK = SS17AZUK.SS17HORY ;
+         DXDLBTAT = SS17AZUK.SS17TATE ;
+         DXDLBDBT = SS17DIHZ.SS17TESO ;
+         DXDLBHAT.DXDLBHCI = SS17HTNI.SS17HCCD ;
+         DXDLBHAT.DXDLBHNM = SS17HTNZ.SS17NNMZ ;
+         DXDLBHAT.DXDLBHJY = SS17HTNZ.SS17ADDZ ;
+         DXDLBCYA.DXDLBCCI = SS17CKNN.SS17CKCD ;
+         DXDLBCYA.DXDLBCNM = SS17CKNN.SS17KNNM ;
+         DXDLBCYA.DXDLBCJY = SS17NUKZ ;
+
+         IF  WK_CHAR28_17_1 = '@'
+         THEN
+           DO ;
+             IF  CHI_FND_SW = '1'
+             THEN
+               DXDLBCYA.DXDLBCJY = CHMCRCTY ;
+             ELSE
+               DO ;
+                 CHI_MST_SW = '1'B ;
+                 CHI_KEY = S16FCKNN.S16FCKCD ;
+                 READ  FILE(VKCHINM) INTO(CHI_MST) KEY(CHI_KEY) ;
+                 IF  CHI_MST_SW
+                 THEN
+                   DO ;
+                     DXDLBCYA.DXDLBCJY = CHMCRCTY ;
+                     CHI_FND_SW = '1' ;
+                   END ;
+                 ELSE ;
+               END ;
+           END ;
+         ELSE ;
+
+         DXDLBCYA.DXDLBCTL = SS17CNTL ;
+         DXDLBSTE.DXDLBSTK = SS17HASI.SS17SIKB ;
+         DXDLBSTE.DXDLBSTD = SS17HASI.SS17SITI ;
+         DXDLBZZG.DXDLBZTN = SS17HYOZ.SS17ENTZ ;
+         DXDLBZZG.DXDLBZAT = SS17HYOZ.SS17AATZ ;
+         DXDLBTAX          = SS17DIHZ.SS17RNKN ;
+         RR_LENG = 300 ;
+         RR_TYPE = 'W' ;
+         CALL  LSB0180  (RR_PTR18,RR_LENG,RR_TYPE,RR_RTNCD) ;
+       END ;
+     ELSE ;
+   BDX_LOG_ENDSTEP :
+   END  BDX_LOG_SUB ;
+
+
+
+   ERR_LOG_SUB_OKR : PROC ;
+     WK_OKR_ERRCNT = WK_OKR_ERRCNT + 1 ;
+     LSB0190_AREA = '' ;
+     RLGAOKNO          = SS17OKNO ;
+     WK_CHR2           = ERR_LOG_SW ;
+     RLGARCID          = WK_PIC2 ;
+     IF  SS17HEAD.SS17HDTC = 0
+     THEN
+       DO ;
+         WK_PIC4           = SS17UKTU.SS17UTCD ;
+         RLGANURY.RLGANYTC = WK_PIC4 ;
+       END ;
+     ELSE
+       RLGANURY.RLGANYTC = SS17HEAD.SS17HDTC ;
+     RLGANURY.RLGAYYYY = SS17TIME.SS17INYY ;
+     RLGANURY.RLGAMMMM = SS17TIME.SS17INMM ;
+     RLGANURY.RLGADDDD = SS17TIME.SS17INDD ;
+     RLGANURY.RLGAHHHH = SS17TIME.SS17INHH ;
+     RLGANURY.RLGAMINU = SS17TIME.SS17INMI ;
+     RLGANURY.RLGASSSS = SS17TIME.SS17INSS ;
+     RLGANURY.RLGATNCD = SS17UKTU.SS17UTCD ;
+     PIC11             = SS17UKTU.SS17UJIK ;
+     RLGANURY.RLGAUYMD = PIC11_DTTM_DATE ;
+     RLGANURY.RLGAATKT = SS17UKTU.SS17UTKB ;
+     RLGANURY.RLGASHNO = SS17UKTU.SS17USSU ;
+     RLGANURY.RLGANICD = SS17HTNI.SS17NNCD ;
+     RLGANURY.RLGAHMEM = SS17HTNZ.SS17NNMZ ;
+     RLGANURY.RLGACHCD = SS17CKNN.SS17CKCD ;
+     RLGANURY.RLGACMEM = SS17CKNN.SS17KNNM ;
+     RLGANURY.RLGAKOSU = SS17KOSU ;
+     RLGANURY.RLGAGYUR = SS17KGRM ;
+     RLGANURY.RLGAMMUN = SS17MSUN.SS17MUNC ;
+     RLGANURY.RLGAMMRY = SS17MSUN.SS17MRYK ;
+     RLGANURY.RLGAMMKB = SS17MSUN.SS17WMKB ;
+     RLGANURY.RLGAMMRT = SS17MSUN.SS17WMRT ;
+     RLGANURY.RLGADDKB = SS17DIHZ.SS17KKBZ ;
+     RLGANURY.RLGAKKAL = SS17DIHZ.SS17DAKN ;
+     RLGANURY.RLGARRKN = SS17DIHZ.SS17RNKN ;
+     RLGANURY.RLGASELE = SS17AZUK.SS17SHKB ;
+     RLGANURY.RLGAKKKN = SS17AZUK.SS17HOKN ;
+     RLGANURY.RLGARRRY = SS17AZUK.SS17HORY ;
+     IF  ERR_LOG_SW = '10'
+     THEN
+       DO ;
+
+         RGUZMITO.RGUZTNCD = KOKRUKJO.KOKRTNCD ;
+         PIC11             = KOKRUKJO.KOKRUYMD ;
+         RGUZMITO.RGUZUYMD = PIC11_DTTM_DATE ;
+         RGUZMITO.RGUZATKT = KOKRUKJO.KOKRATSU ;
+         RGUZMITO.RGUZSHNO = KOKRUKJO.KOKRSHAK ;
+         RGUZMITO.RGUZNICD = KOKRNIOK.KOKRCOCD ;
+         RGUZMITO.RGUZHMEM = KOKRGRUP.KOKRNAME ;
+         RGUZMITO.RGUZCHCD = KOKRNIUK.KOKRCKCD ;
+         RGUZMITO.RGUZCMEM = KOKRNIUK.KOKRKNAM ;
+         RGUZMITO.RGUZKOSU = KOKRKOSU ;
+         RGUZMITO.RGUZGYUR = KOKRKIRO ;
+         RGUZMITO.RGUZMMUN = KOKRMISY.KOKRUNCI ;
+         RGUZMITO.RGUZMMRY = KOKRMISY.KOKRRYOK ;
+         RGUZMITO.RGUZMMKB = KOKRMISY.KOKRKBUN ;
+         RGUZMITO.RGUZMMRT = KOKRMISY.KOKRRITU ;
+         RGUZMITO.RGUZDDKB = KOKRDAIH.KOKRDKBN ;
+         RGUZMITO.RGUZKKAL = KOKRDAIH.KOKRDAAT ;
+         RGUZMITO.RGUZRRKN = KOKRDAIH.KOKRRONE ;
+         RGUZMITO.RGUZSELE = KOKRAZUK.KOKRASHU ;
+         RGUZMITO.RGUZKKKN = KOKRAZUK.KOKRAKIN ;
+         RGUZMITO.RGUZRRRY = KOKRAZUK.KOKRARYO ;
+       END ;
+     ELSE ;
+     RR_LENG = 250 ;
+     RR_TYPE = 'W' ;
+     CALL  LSB0190  (RR_PTR19,RR_LENG,RR_TYPE,RR_RTNCD) ;
+   END  ERR_LOG_SUB_OKR ;
+
+
+
+   ERR_LOG_SUB_KARI : PROC ;
+     WK_KAR_ERRCNT = WK_KAR_ERRCNT + 1 ;
+     LSB0190_AREA = '' ;
+     RLGAOKNO          = IN_KRI_DATA.SSYUKONO ;
+     WK_CHR2           = ERR_LOG_SW ;
+     RLGARCID          = WK_PIC2 ;
+     RLGANURY.RLGANYTC = IN_KRI_DATA.SSYUHEDE.SSYUINTC ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,1,2) ;
+     RLGANURY.RLGAYYYY = WK_PIC2 ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,3,2) ;
+     RLGANURY.RLGAMMMM = WK_PIC2 ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIYMD,5,2) ;
+     RLGANURY.RLGADDDD = WK_PIC2 ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,1,2) ;
+     RLGANURY.RLGAHHHH = WK_PIC2 ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,3,2) ;
+     RLGANURY.RLGAMINU = WK_PIC2 ;
+     WK_CHR2           = SUBSTR(IN_KRI_DATA.SSYUHEDE.SSYUIHMS,5,2) ;
+     RLGANURY.RLGASSSS = WK_PIC2 ;
+     RLGANURY.RLGATNCD = IN_KRI_DATA.SSYUKOFU.SSYUTNCD ;
+     RLGANURY.RLGAUYMD = IN_KRI_DATA.SSYUKOFU.SSYUKYMD ;
+     RLGANURY.RLGAATKT = IN_KRI_DATA.SSYUKOFU.SSYUKAKB ;
+     RLGANURY.RLGASHNO = IN_KRI_DATA.SSYUKOFU.SSYUKSNO ;
+     RLGANURY.RLGAHMEM = SUBSTR(IN_KRI_DATA.SSYUHNNM,1,14) ;
+     RLGANURY.RLGACMEM = SUBSTR(IN_KRI_DATA.SSYUCNNM,1,14) ;
+     RLGANURY.RLGAKOSU = IN_KRI_DATA.SSYUKOSU.SSYUKKOS ;
+     RLGANURY.RLGAGYUR = IN_KRI_DATA.SSYUJURY ;
+     IF  ERR_LOG_SW = '10'
+     THEN
+       DO ;
+         RGUZMITO.RGUZTNCD = KRI_MSAR.VJKHKOFU.VJKHTNCD ;
+         RGUZMITO.RGUZUYMD = KRI_MSAR.VJKHKOFU.VJKHKYMD ;
+         RGUZMITO.RGUZATKT = KRI_MSAR.VJKHKOFU.VJKHUKKB ;
+         RGUZMITO.RGUZSHNO = KRI_MSAR.VJKHKOFU.VJKHUSNO ;
+         RGUZMITO.RGUZHMEM = KRI_MSAR.VJKHHNNM ;
+         RGUZMITO.RGUZCMEM = KRI_MSAR.VJKHCNNM ;
+         RGUZMITO.RGUZKOSU = KRI_MSAR.VJKHKOSU.VJKHKKOS ;
+         RGUZMITO.RGUZGYUR = KRI_MSAR.VJKHJURY ;
+       END ;
+     ELSE ;
+     RR_LENG = 250 ;
+     RR_TYPE = 'W' ;
+     CALL  LSB0190  (RR_PTR19,RR_LENG,RR_TYPE,RR_RTNCD) ;
+   END  ERR_LOG_SUB_KARI ;
+ END BS30010 ;
