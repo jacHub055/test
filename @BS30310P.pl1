@@ -1,0 +1,792 @@
+
+
+
+
+
+
+
+
+
+
+
+
+ BS30310 : PROC OPTIONS(MAIN);
+
+
+
+
+   DCL  VKCUSTM   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKCUNK1   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKDXUK1   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKCHINM   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKOMST1   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKOMST2   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  VKCORPO   FILE RECORD KEYED DIRECT INPUT ENV(VSAM) ;
+
+   DCL  OUTFILE   FILE RECORD OUTPUT ;
+
+
+
+
+   DCL    OUT_DATA  DEF  OUT_OKR_DATA       CHAR (0384) ;
+   DCL 01 OUT_SPLIT  DEF  OUT_OKR_DATA ,
+         02 OUT_SYU1            CHAR(0238) ,
+         02 OUT_SYU2            CHAR(0146) ;
+   DCL 01 OUT_OKR_DATA ,
+          %INCLUDE   SSS17 ;
+   DCL 01 SS17ADDZ_DF   DEF  SS17ADDZ ,
+         02 ADNAME              CHAR(0021) ,
+         02 ADKUBN              CHAR(0001) ,
+         02 ADDUMY              CHAR(0006) ;
+
+
+
+   DCL 01 OKRAREA ,
+         %INCLUDE   OKRJYON1 ;
+   DCL 01 DXAREA ,
+         %INCLUDE   DXUKMSTX ;
+   DCL    DX_KEY               CHAR(0025) ;
+   DCL 01 DX_KEY_DF   DEF   DX_KEY ,
+         02 DX_NICD            CHAR(0007) ,
+         02 DX_DUM1            PIC'(0001)9' ,
+         02 DX_OKNO            CHAR(0011) ,
+         02 DX_DUM2            CHAR(0006) ;
+   DCL 01 NIAREA ,
+         %INCLUDE   VCUBASED ;
+   DCL 01 UNAREA ,
+         %INCLUDE   VCUUUU12 ;
+   DCL    NI_KEY               CHAR(0007) ;
+   DCL    NI_KEY_P   DEF   NI_KEY       PIC'(0007)9' ;
+   DCL 01 CHAREA ,
+         %INCLUDE   CHIMEIET ;
+   DCL 01 COAREA ,
+         %INCLUDE   CORPOMAN ;
+   DCL    CH_KEY               PIC'(0005)9' ;
+   DCL    WKC_NAME         CHAR(0028) ;
+   DCL    WKC_LSKB         PIC'(0002)9' ;
+   DCL    WKC_LSTN         PIC'(0004)9' ;
+   DCL    WK_SHNO_C        CHAR(0008) ;
+   DCL    WK_SHNO_P   DEF   WK_SHNO_C         PIC'(0008)9' ;
+   DCL    MS_SW            CHAR(0001) ;
+   DCL    OKR_SW           CHAR(0001)      INIT('') ;
+
+
+
+   DCL  EOF_SW                  BIT  (1)   INIT('1'B) ;
+   DCL  IN_CNT             DEC FIXED (7)   INIT(0) ;
+   DCL  OUT_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL  TAX_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL  UNK_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL  ERR_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL  NAM_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL  WK_CHAR3                CHAR (3) ;
+   DCL   (ADDR,SUBSTR,HIGH,LOW,LENGTH,STRING,VERIFY) BUILTIN ;
+
+   DCL  NUMR         CHAR(10)   VALUE('0123456789') ;
+   DCL  (INDEX,TRANSLATE)   BUILTIN ;
+   DCL  (DATETIME)   BUILTIN ;
+   DCL  SOSI         CHAR(2) INIT('0E0F'X) ;
+   DCL  SOSO         CHAR(1)  DEF  SOSI  POS(1) ;
+   DCL  SISI         CHAR(1)  DEF  SOSI  POS(2) ;
+   DCL  NAMWK        CHAR(14) ;
+   DCL  INDEX_SO     FIXED BIN(15) ;
+   DCL  INDEX_SI     FIXED BIN(15) ;
+   DCL  GAMNO        CHAR(2) ;
+   DCL  GAMNO_2_1    CHAR(1)  DEF  GAMNO  POS(2) ;
+   DCL  WK_TENCD     CHAR(0004) ;
+   DCL  WK_TENMV   DEF   WK_TENCD     PIC'(0004)9' ;
+   DCL  YMDHMS_WK    PIC'(0012)9' ;
+   DCL 01 DATE_TIME_WK   DEF   YMDHMS_WK ,
+         02 DATE_C       CHAR(0006) ,
+         02 TIME_C       CHAR(0006) ;
+   DCL  LSP0040     ENTRY     RETURNS(CHAR(6)) ;
+   DCL  RRP_DATE         CHAR(0006) ;
+   DCL  RRP_DATE_P   DEF   RRP_DATE     PIC'(0006)9' ;
+   DCL  CUST_TNCD        CHAR(0004) ;
+   DCL  DATE_CHA         CHAR(0006) ;
+
+   DCL 01         TEL_AREA ,
+         02       TEL_LEN              PIC     '(0002)9' ,
+         02       TEL_TEL              CHAR     (0020)   ;
+
+
+
+   DCL            WRK_TELA             CHAR     (0020)   ;
+   DCL 01         WRK_TELA_DEF   DEF   WRK_TELA          ,
+         02       DEF_TELA    (0020)   CHAR     (0001)   ;
+
+   DCL            WRK_TELB             CHAR     (0020)   ;
+   DCL 01         WRK_TELB_DEF   DEF   WRK_TELB          ,
+         02       DEF_TELB    (0020)   CHAR     (0001)   ;
+   DCL  XCNT               DEC FIXED (7)   INIT(0) ;
+   DCL  DB2_CNT            DEC FIXED (7)   INIT(0) ;
+   DCL            WK_YMDHMSS           CHAR     (0017) ;
+   DCL 01         WK_YMDHMSS_DF  DEF  WK_YMDHMSS ,
+         02       WK_Y                 CHAR     (0002) ,
+         02       WK_YMD               PIC     '(0006)9' ,
+         02       WK_HMS               PIC     '(0006)9' ,
+         02       WK_SS                PIC     '(0003)9' ;
+   DCL    WK_CHR1                CHAR      (0001)   INIT (' ') ;
+   DCL    WK_PIC1  DEF  WK_CHR1  PIC      '(0001)9' ;
+   DCL    WK_CHR6                CHAR      (0006)   INIT (' ') ;
+   DCL    WK_PIC6  DEF  WK_CHR6  PIC      '(0006)9' ;
+   DCL    WK_CHR7                CHAR      (0007)   INIT (' ') ;
+   DCL    WK_PIC7  DEF  WK_CHR7  PIC      '(0007)9' ;
+   DCL    WK_CHR11               CHAR      (0011)   INIT (' ') ;
+   DCL    WK_PIC11 DEF  WK_CHR11 PIC      '(0011)9' ;
+
+
+
+   ON KEY(VKDXUK1)
+     BEGIN ;
+       MS_SW = 'N' ;
+     END ;
+   ON KEY(VKCHINM)
+     BEGIN ;
+       MS_SW = 'N' ;
+     END ;
+   ON KEY(VKCUSTM)
+     BEGIN ;
+       MS_SW = 'N' ;
+     END ;
+   ON KEY(VKCUNK1)
+     BEGIN ;
+       MS_SW = 'N' ;
+     END ;
+   ON KEY(VKOMST1)
+     BEGIN ;
+       OKR_SW = 'N' ;
+     END ;
+   ON KEY(VKOMST2)
+     BEGIN ;
+       OKR_SW = 'N' ;
+     END ;
+   ON KEY(VKCORPO)
+     BEGIN ;
+       MS_SW = 'N' ;
+     END ;
+
+
+
+   OPEN FILE(OUTFILE) ,
+        FILE(VKDXUK1) ,
+        FILE(VKCHINM) ,
+        FILE(VKCUNK1) ,
+        FILE(VKOMST1) ,
+        FILE(VKOMST2) ,
+        FILE(VKCUSTM) ,
+        FILE(VKCORPO) ;
+   EXEC SQL INCLUDE SQLCA ;
+   EXEC SQL INCLUDE RDEDIP ;
+   EXEC SQL INCLUDE RDDXU1 ;
+
+
+
+   RRP_DATE = LSP0040 ;
+   WK_YMDHMSS = DATETIME ;
+   DATE_CHA = WK_YMD ;
+
+
+
+
+
+
+
+   EXEC SQL DECLARE CSR  CURSOR FOR
+                    SELECT *
+                    FROM  RDEDIP
+                    WHERE  EDIPKKKB = '0'
+                      AND  (EDIPAYMD >= :DATE_CHA OR
+                            EDIPAYMD >= :RRP_DATE)
+                    ORDER BY EDIPDIHY,EDIPOKNO ;
+   EXEC SQL OPEN CSR ;
+   EXEC SQL FETCH CSR INTO :DCLRDEDIP ;
+   IF  SQLCODE = 000
+   THEN EOF_SW = '1'B ;
+   ELSE EOF_SW = '0'B ;
+
+
+
+   DO WHILE(EOF_SW) ;
+     IN_CNT = IN_CNT + 1 ;
+     DX_KEY_DF = '' ;
+     DX_NICD = EDIPDIHY ;
+     DX_OKNO = EDIPOKNO ;
+     CALL  OKR_MST_CHECK ;
+     IF  OKR_SW = 'N'
+     THEN
+       DO ;
+         IF  DX_NICD = '7777777'
+           | SUBSTR(DX_NICD,1,3) = '666'
+         THEN
+           DO ;
+             EXEC SQL SELECT *
+                      INTO :DCLRDDXU1
+                      FROM RDDXU1
+                      WHERE DXU1OKNO = :DX_OKNO ;
+             IF  SQLCODE = 000
+             THEN
+               DO ;
+
+                 MS_SW = 'Y' ;
+                 READ FILE(VKCORPO) INTO(COAREA) KEY(DXU1NICD) ;
+                 IF  MS_SW = 'Y'
+                 THEN
+                   DO ;
+                     IF  CORPPUDL = 'D'
+                       & CORPPUMD <= RRP_DATE
+                     THEN
+                       DO ;
+                         EXEC SQL UPDATE RDEDIP
+                                         SET EDIPKKKB = 'D'
+                                         WHERE EDIPOKNO = :DX_OKNO ;
+                       END ;
+                     ELSE  CALL  DB2_DENZOU_MAKE ;
+                   END ;
+                 ELSE  CALL  DB2_DENZOU_MAKE ;
+               END ;
+             ELSE ;
+           END ;
+         ELSE
+           DO ;
+             MS_SW = 'Y' ;
+             READ FILE(VKDXUK1) INTO(DXAREA) KEY(DX_KEY) ;
+             IF MS_SW = 'Y'
+             THEN
+               DO ;
+
+
+
+                 IF VXUAUNNM ý= ''
+                   & INDEX(VXUAUNNM,SOSO) = 0
+                   & INDEX(VXUAUNNM,SISI) = 0
+                   & VXUAKOSU > 0
+                   & VXUAKGXX > 0
+                 THEN
+                   DO ;
+                     MS_SW = 'Y' ;
+                     IF VXUANCKB = '1'
+                     THEN NI_KEY = VXUANNCD ;
+                     ELSE NI_KEY = DX_NICD ;
+                     READ FILE(VKCUSTM) INTO(NIAREA) KEY(NI_KEY) ;
+                     IF MS_SW = 'Y'
+                     THEN
+                       DO ;
+                         CUST_TNCD = DNADATCD(1) ;
+                         IF  DDEXKBNK = 0
+                           & CUST_TNCD = EDIPTNCD
+                         THEN
+                           DO ;
+                             MS_SW = 'Y' ;
+                           READ FILE(VKCUNK1) INTO(UNAREA) KEY(NI_KEY) ;
+                             IF MS_SW = 'Y'
+                             THEN
+                               DO ;
+                                 MS_SW = 'Y' ;
+                                 CH_KEY = VXUACCCD ;
+                           READ FILE(VKCHINM) INTO(CHAREA) KEY(CH_KEY) ;
+                                 IF MS_SW = 'Y'
+                                 THEN
+                                   DO ;
+                                     WKC_NAME =
+                                       CHMCRTDF||SUBSTR(CHMCRCTY,1,20) ;
+                                     WKC_LSKB = CHMEDHCD ;
+                                     WKC_LSTN = CHMEDTCD ;
+                                     CALL SYUSIN_MAKE_RTN ;
+                                   END ;
+                                 ELSE
+                                   DO ;
+                                     EXEC SQL UPDATE RDEDIP
+                                              SET EDIPKKKB = 'C'
+                                             WHERE EDIPOKNO = :DX_OKNO ;
+                                   END ;
+                               END ;
+                             ELSE
+                               DO ;
+                                 EXEC SQL UPDATE RDEDIP
+                                          SET EDIPKKKB = 'N'
+                                          WHERE EDIPOKNO = :DX_OKNO ;
+                               END ;
+                           END ;
+                         ELSE
+                           DO ;
+                             EXEC SQL UPDATE RDEDIP
+                                      SET EDIPKKKB = 'J'
+                                      WHERE EDIPOKNO = :DX_OKNO ;
+                           END ;
+                       END ;
+                     ELSE
+                       DO ;
+                         EXEC SQL UPDATE RDEDIP
+                                  SET EDIPKKKB = 'N'
+                                  WHERE EDIPOKNO = :DX_OKNO ;
+                       END ;
+                   END ;
+                 ELSE
+                   DO ;
+                     IF  VXUAKOSU <= 0
+                       | VXUAKGXX <= 0
+                     THEN
+                       DO ;
+                         EXEC SQL UPDATE RDEDIP
+                                  SET EDIPKKKB = 'G'
+                                  WHERE EDIPOKNO = :DX_OKNO ;
+                       END ;
+                     ELSE
+                       DO ;
+                         EXEC SQL UPDATE RDEDIP
+                                  SET EDIPKKKB = 'E'
+                                  WHERE EDIPOKNO = :DX_OKNO ;
+                       END ;
+                   END ;
+               END ;
+             ELSE ;
+           END ;
+       END ;
+     ELSE
+       DO ;
+         EXEC SQL UPDATE RDEDIP
+                  SET EDIPKKKB = 'W'
+                  WHERE EDIPOKNO = :DX_OKNO ;
+       END ;
+     EXEC SQL FETCH CSR INTO :DCLRDEDIP ;
+     IF  SQLCODE = 000
+     THEN EOF_SW = '1'B ;
+     ELSE EOF_SW = '0'B ;
+   END ;
+   EXEC SQL CLOSE CSR ;
+ TRIAL_END :
+   CLOSE FILE(OUTFILE) ,
+         FILE(VKDXUK1) ,
+         FILE(VKCHINM) ,
+         FILE(VKCUNK1) ,
+         FILE(VKOMST1) ,
+         FILE(VKOMST2) ,
+         FILE(VKCUSTM) ,
+         FILE(VKCORPO) ;
+     DISPLAY('*  IN   COUNT  = '||IN_CNT) ;
+     DISPLAY('*  OUT  COUNT  = '||OUT_CNT) ;
+
+
+
+ SYUSIN_MAKE_RTN : PROC ;
+     OUT_OKR_DATA = '' ;
+     WK_CHR11 = EDIPOKNO ;
+     SS17OKNO = WK_PIC11 ;
+     SS17OKKB = 0 ;
+     SS17MCKB = VXUAMCKB ;
+     SELECT ;
+       WHEN(EDIPSHNO >= '10000000' & EDIPSHNO <= '59999999')
+         SS17GMKB = 18 ;
+       WHEN(EDIPSHNO >= '60000000' & EDIPSHNO <= '64999999')
+         SS17GMKB = 38 ;
+       WHEN(EDIPSHNO >= '70000000' & EDIPSHNO <= '79999999')
+         SS17GMKB = 28 ;
+       OTHERWISE
+         SS17GMKB = 18 ;
+     END ;
+     SS17HCCD = DNADCODA ;
+     SS17NNCD = DDCUSTCD ;
+     SS17CKCD = CH_KEY ;
+     SS17KNNM = SUBSTR(VXUAUNNM,1,14) ;
+     TEL_TEL        = '' ;
+     TEL_TEL        = VXUAUTEL ;
+     CALL        TEL_CHANGE ;
+     SS17CNTL = SUBSTR(TEL_TEL,1,10) ;
+     SS17KOSU = VXUAKOSU ;
+     SS17KGRM = VXUAKGXX ;
+     SS17WMKB = 0 ;
+     SS17WMRT = 0 ;
+     SS17TATE = VXUATATE ;
+     SS17SHKB = 0 ;
+     SS17HOKN = 0 ;
+     SS17KKBZ = 0 ;
+     SS17DAKN = 0 ;
+     SELECT ;
+       WHEN(EDIPSHNO >= '10000000' & EDIPSHNO <= '59999999')
+         DO ;
+           IF  DNADSQKB = 1
+           THEN  SS17UTKB = 31 ;
+           ELSE  SS17UTKB = 32 ;
+         END ;
+       WHEN(EDIPSHNO >= '60000000' & EDIPSHNO <= '64999999')
+         DO ;
+           IF  DNADSQKB = 1
+           THEN  SS17UTKB = 51 ;
+           ELSE  SS17UTKB = 52 ;
+         END ;
+       WHEN(EDIPSHNO >= '70000000' & EDIPSHNO <= '79999999')
+         DO ;
+           IF  DNADSQKB = 1
+           THEN  SS17UTKB = 41 ;
+           ELSE  SS17UTKB = 42 ;
+         END ;
+       OTHERWISE
+         DO ;
+           IF  DNADSQKB = 1
+           THEN  SS17UTKB = 51 ;
+           ELSE  SS17UTKB = 52 ;
+         END ;
+     END ;
+     SS17UTCD = DNADATCD(1) ;
+     WK_SHNO_C = EDIPSHNO ;
+     SS17UDSU = WK_SHNO_P ;
+     SS17USSU = WK_SHNO_P ;
+     SS17UJIK = EDIPKYMD ;
+     SS17TAKB = DDEXKBN1 ;
+     SS17TANO = VXUATONO ;
+     SS17TOKB = 0 ;
+     SS17TORY = 0 ;
+     SS17ROKZ = 0 ;
+     SS17HSOZ = VXUASQKB ;
+     CH_KEY = DNADCODA ;
+     MS_SW = 'Y' ;
+     READ FILE(VKCHINM) INTO(CHAREA) KEY(CH_KEY) ;
+     IF  MS_SW = 'Y'
+     THEN  SS17ADDZ = CHMCRTDF||SUBSTR(CHMCRCTY,1,20) ;
+     ELSE  SS17ADDZ = '????????????????????????????'  ;
+     IF  KKBNDUMM = '1'
+       & VXUAUNJ1 = 0
+       & VXUAUNJ2 = 0
+       & VXUAUNJ3 = 0
+       & VXUAUNJ4 = 0
+     THEN
+       DO ;
+         ADKUBN = '#' ;
+         ADDUMY = '000000' ;
+       END ;
+     ELSE ;
+     SS17NNMZ = DNTNRCNM ;
+     SS17NUKZ = WKC_NAME ;
+     SS17AATZ = WKC_LSKB ;
+     SS17ENTZ = WKC_LSTN ;
+     SS17KIJZ = 0 ;
+
+     IF  SS17KGRM <= 200
+     THEN  SS17SHOZ = 200 ;
+     ELSE
+       DO ;
+         IF  SS17KGRM <= 2000
+         THEN  SS17SHOZ = 300 ;
+         ELSE
+           DO ;
+             IF  SS17KGRM <= 8000
+             THEN  SS17SHOZ = 400 ;
+             ELSE  SS17SHOZ = 500 ;
+           END ;
+       END ;
+     SELECT (DNADGSKB) ;
+       WHEN (5200)  SS17SHOZ = 130 ;
+       WHEN (5310)  SS17SHOZ = 120 ;
+       WHEN (5320)  SS17SHOZ = 120 ;
+       OTHERWISE ;
+     END ;
+     SS17SIKB = 0 ;
+     SS17SITI = 0 ;
+
+     WK_YMDHMSS = DATETIME ;
+     DATE_C = WK_YMD ;
+     TIME_C = WK_HMS ;
+     STRING(SS17TIME) = YMDHMS_WK ;
+     IF  VXUAUNKB = 9
+       | VXUAUNKB = 8
+     THEN  SS17MUNC = VXUAUNJ1 ;
+     ELSE  SS17MUNC = 0 ;
+     IF  VXUAUNKB = 9
+       | VXUAUNKB = 7
+     THEN
+       DO ;
+         SS17MRYK = VXUAUNJ2 + VXUAUNJ3 + VXUAUNJ4 ;
+         IF  VXUARYNO(1) > 0
+         THEN
+           DO ;
+             SELECT(VXUARYNO(1)) ;
+               WHEN(02) SS17HATZ = VXUAUNJ2 ;
+               WHEN(03) SS17TYAZ = VXUAUNJ2 ;
+               WHEN(04) SS17TOKZ = VXUAUNJ2 ;
+               WHEN(05) SS17CYAZ = VXUAUNJ2 ;
+               WHEN(06) SS17RRUZ = VXUAUNJ2 ;
+               WHEN(07) SS17TESO = VXUAUNJ2 ;
+               WHEN(08) SS17SSAZ = VXUAUNJ2 ;
+               WHEN(09) SS17CHAZ = VXUAUNJ2 ;
+               WHEN(10) SS17FERZ = VXUAUNJ2 ;
+               WHEN(11) SS17TYOZ = VXUAUNJ2 ;
+               WHEN(12) SS17KONZ = VXUAUNJ2 ;
+               WHEN(13) SS17HIGZ = VXUAUNJ2 ;
+               WHEN(14) SS17ETCZ = VXUAUNJ2 ;
+               WHEN(15) SS17HORY = VXUAUNJ2 ;
+               OTHERWISE SS17YOBZ = VXUAUNJ2 ;
+             END ;
+           END ;
+         ELSE ;
+         IF VXUARYNO(2) > 0
+         THEN
+           DO ;
+             SELECT(VXUARYNO(2)) ;
+               WHEN(02) SS17HATZ = VXUAUNJ3 ;
+               WHEN(03) SS17TYAZ = VXUAUNJ3 ;
+               WHEN(04) SS17TOKZ = VXUAUNJ3 ;
+               WHEN(05) SS17CYAZ = VXUAUNJ3 ;
+               WHEN(06) SS17RRUZ = VXUAUNJ3 ;
+               WHEN(07) SS17TESO = VXUAUNJ3 ;
+               WHEN(08) SS17SSAZ = VXUAUNJ3 ;
+               WHEN(09) SS17CHAZ = VXUAUNJ3 ;
+               WHEN(10) SS17FERZ = VXUAUNJ3 ;
+               WHEN(11) SS17TYOZ = VXUAUNJ3 ;
+               WHEN(12) SS17KONZ = VXUAUNJ3 ;
+               WHEN(13) SS17HIGZ = VXUAUNJ3 ;
+               WHEN(14) SS17ETCZ = VXUAUNJ3 ;
+               WHEN(15) SS17HORY = VXUAUNJ3 ;
+               OTHERWISE SS17YOBZ = VXUAUNJ3 ;
+             END ;
+           END ;
+         ELSE ;
+         IF VXUARYNO(3) > 0
+         THEN
+           DO ;
+             SELECT(VXUARYNO(3)) ;
+               WHEN(02) SS17HATZ = VXUAUNJ4 ;
+               WHEN(03) SS17TYAZ = VXUAUNJ4 ;
+               WHEN(04) SS17TOKZ = VXUAUNJ4 ;
+               WHEN(05) SS17CYAZ = VXUAUNJ4 ;
+               WHEN(06) SS17RRUZ = VXUAUNJ4 ;
+               WHEN(07) SS17TESO = VXUAUNJ4 ;
+               WHEN(08) SS17SSAZ = VXUAUNJ4 ;
+               WHEN(09) SS17CHAZ = VXUAUNJ4 ;
+               WHEN(10) SS17FERZ = VXUAUNJ4 ;
+               WHEN(11) SS17TYOZ = VXUAUNJ4 ;
+               WHEN(12) SS17KONZ = VXUAUNJ4 ;
+               WHEN(13) SS17HIGZ = VXUAUNJ4 ;
+               WHEN(14) SS17ETCZ = VXUAUNJ4 ;
+               WHEN(15) SS17HORY = VXUAUNJ4 ;
+               OTHERWISE SS17YOBZ = VXUAUNJ4 ;
+             END ;
+           END ;
+         ELSE ;
+       END ;
+     ELSE ;
+     SS17HAKB = 0 ;
+     SS17HARY = 0 ;
+     SS17SYKZ = 0 ;
+     SS17HAKZ = 0 ;
+     SS17UNTZ = 0 ;
+     SS17RYKZ = 0 ;
+
+     SS17HDTC = SS17UTCD ;
+     SS17HDKZ = 0 ;
+     SS17REID = 100 ;
+     SS17LENG = 384 ;
+     SELECT(VXUAUNKB) ;
+       WHEN(9)   SS17UKKB = 1 ;
+       WHEN(8)   SS17UKKB = 2 ;
+       WHEN(7)   SS17UKKB = 2 ;
+       OTHERWISE SS17UKKB = 0 ;
+     END;
+     SS17CTOR = RRP_DATE_P ;
+     SS17GYOS = DNADGSKB ;
+     SS17JURY = DDEXKBNO ;
+     SS17SSKB = DNADSQKB ;
+     SS17DXK1 = DDEXKBN2 ;
+     SS17DXK2 = DDEXKBN3 ;
+     SS17DXK3 = DDEXKBND ;
+     SS17DXK4 = DDEXKBNF ;
+     SS17GMNO = 'DXP' ;
+     IF  SS17MCKB = 1
+     THEN SS17SYAK = KKBNDUMM ;
+     ELSE SS17SYAK = ' ' ;
+
+     WRITE  FILE(OUTFILE) FROM(OUT_DATA) ;
+     OUT_CNT = OUT_CNT + 1 ;
+     EXEC SQL UPDATE RDEDIP
+                     SET EDIPSYU1 = :OUT_SYU1 ,
+                         EDIPSYU2 = :OUT_SYU2
+                     WHERE EDIPOKNO = :DX_OKNO ;
+ END  SYUSIN_MAKE_RTN ;
+ TEL_CHANGE : PROC ;
+
+
+
+
+
+
+
+   TEL_LEN  =    0     ;
+   WRK_TELA = TEL_TEL  ;
+   WRK_TELB = (20)' '  ;
+   DO XCNT =    1 TO   20 ;
+     IF DEF_TELA(XCNT) >= '0' &
+        DEF_TELA(XCNT) <= '9'
+     THEN
+       DO ;
+         TEL_LEN  = TEL_LEN  +    1     ;
+         DEF_TELB(TEL_LEN) = DEF_TELA(XCNT) ;
+       END;
+     ELSE ;
+   END;
+   TEL_TEL  = WRK_TELB ;
+
+
+
+ END TEL_CHANGE ;
+ OKR_MST_CHECK : PROC ;
+   OKR_SW = 'Y' ;
+   READ  FILE(VKOMST2) INTO(OKRAREA) KEY(EDIPOKNO) ;
+   IF  OKR_SW = 'N'
+   THEN
+     DO ;
+       OKR_SW = 'Y' ;
+       READ  FILE(VKOMST1) INTO(OKRAREA) KEY(EDIPOKNO) ;
+     END ;
+   ELSE ;
+ END OKR_MST_CHECK ;
+ DB2_DENZOU_MAKE : PROC ;
+
+
+
+     IF  DXU1UNNM ý= ''
+       & INDEX(DXU1UNNM,SOSO) = 0
+       & INDEX(DXU1UNNM,SISI) = 0
+       & VERIFY(DXU1NICD,NUMR) = 0
+       & VERIFY(DXU1OKNO,NUMR) = 0
+       & VERIFY(DXU1JYMD,NUMR) = 0
+       & VERIFY(DXU1MCKB,NUMR) = 0
+       & VERIFY(DXU1UYMD,NUMR) = 0
+       & VERIFY(DXU1UNKB,NUMR) = 0
+       & VERIFY(DXU1NNCD,NUMR) = 0
+       & DXU1KOSU > 0
+       & DXU1KGXX > 0
+     THEN
+       DO ;
+         MS_SW = 'Y' ;
+         IF DXU1NCKB = '1'
+         THEN NI_KEY = DXU1NNCD ;
+         ELSE NI_KEY = DX_NICD ;
+         READ FILE(VKCUSTM) INTO(NIAREA) KEY(NI_KEY) ;
+         IF MS_SW = 'Y'
+         THEN
+           DO ;
+             CUST_TNCD = DNADATCD(1) ;
+             IF  DDEXKBNK = 0
+               & CUST_TNCD = EDIPTNCD
+             THEN
+               DO ;
+                 MS_SW = 'Y' ;
+                 READ FILE(VKCUNK1) INTO(UNAREA) KEY(NI_KEY) ;
+                 IF MS_SW = 'Y'
+                 THEN
+                   DO ;
+                     MS_SW = 'Y' ;
+                     CH_KEY = DXU1CCCD ;
+                     READ FILE(VKCHINM) INTO(CHAREA) KEY(CH_KEY) ;
+                     IF MS_SW = 'Y'
+                     THEN
+                       DO ;
+                         WKC_NAME =
+                           CHMCRTDF||SUBSTR(CHMCRCTY,1,20) ;
+                         WKC_LSKB = CHMEDHCD ;
+                         WKC_LSTN = CHMEDTCD ;
+
+                         DXAREA = '' ;
+                         WK_CHR7  = DXU1NICD ;
+                         VXUARPNC = WK_PIC7  ;
+                         WK_CHR11 = DXU1OKNO ;
+                         VXUAROKR = WK_PIC11 ;
+                         VXUATONO = DXU1TONO ;
+                         WK_CHR6  = DXU1JYMD ;
+                         VXUAJYMD = WK_PIC6  ;
+                         VXUAATCD = DXU1ATCD ;
+
+                         WK_CHR1  = DXU1MCKB ;
+                         VXUAMCKB = WK_PIC1  ;
+                         WK_CHR6  = DXU1UYMD ;
+                         VXUAUYMD = WK_PIC6  ;
+                         VXUACCCD = DXU1CCCD ;
+                         VXUAKOSU = DXU1KOSU ;
+                         VXUAKGXX = DXU1KGXX ;
+                         VXUASAIS = DXU1SAIS ;
+                         VXUAUNJ1 = DXU1UNJ1 ;
+                         VXUAUNJ2 = DXU1UNJ2 ;
+                         VXUAUNJ3 = DXU1UNJ3 ;
+                         VXUAUNJ4 = DXU1UNJ4 ;
+                         VXUATATE = DXU1TATE ;
+                         VXUATOTL = DXU1TOTL ;
+                         VXUADBKN = DXU1DBKN ;
+                         VXUAUNNM = DXU1UNNM ;
+                         VXUAUNAD = DXU1UNAD ;
+                         VXUAUTEL = DXU1UTEL ;
+                         VXUAUADC = DXU1UADC ;
+                         VXUAHNNM = DXU1HNNM ;
+                         VXUAHNAD = DXU1HNAD ;
+                         VXUAHTEL = DXU1HTEL ;
+                         VXUAHADC = DXU1HADC ;
+                         VXUASQKB = DXU1SQKB ;
+                         VXUANIKB = DXU1NIKB ;
+                         VXUATKYO = DXU1TKYO ;
+                         WK_CHR1  = DXU1UNKB ;
+                         VXUAUNKB = WK_PIC1  ;
+                         VXUARYNO(1) = DXU1RYN1 ;
+                         VXUARYNO(2) = DXU1RYN2 ;
+                         VXUARYNO(3) = DXU1RYN3 ;
+                         VXUANCKB = DXU1NCKB ;
+                         WK_CHR7  = DXU1NNCD ;
+                         VXUANNCD = WK_PIC7  ;
+                         VXUANKBN = DXU1NKBN ;
+
+
+
+
+                         CALL SYUSIN_MAKE_RTN ;
+                       END ;
+                     ELSE
+                       DO ;
+                         EXEC SQL UPDATE RDEDIP
+                                  SET EDIPKKKB = 'C'
+                                 WHERE EDIPOKNO = :DX_OKNO ;
+                       END ;
+                   END ;
+                 ELSE
+                   DO ;
+                     EXEC SQL UPDATE RDEDIP
+                              SET EDIPKKKB = 'N'
+                              WHERE EDIPOKNO = :DX_OKNO ;
+                   END ;
+               END ;
+             ELSE
+               DO ;
+                 EXEC SQL UPDATE RDEDIP
+                          SET EDIPKKKB = 'J'
+                          WHERE EDIPOKNO = :DX_OKNO ;
+               END ;
+           END ;
+         ELSE
+           DO ;
+             EXEC SQL UPDATE RDEDIP
+                      SET EDIPKKKB = 'N'
+                      WHERE EDIPOKNO = :DX_OKNO ;
+           END ;
+       END ;
+     ELSE
+       DO ;
+         IF  DXU1KOSU <= 0
+           | DXU1KGXX <= 0
+         THEN
+           DO ;
+             EXEC SQL UPDATE RDEDIP
+                      SET EDIPKKKB = 'G'
+                      WHERE EDIPOKNO = :DX_OKNO ;
+           END ;
+         ELSE
+           DO ;
+             EXEC SQL UPDATE RDEDIP
+                      SET EDIPKKKB = 'E'
+                      WHERE EDIPOKNO = :DX_OKNO ;
+           END ;
+       END ;
+ END  DB2_DENZOU_MAKE ;
+ END BS30310 ;
